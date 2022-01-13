@@ -142,10 +142,10 @@ contract BaseV1Pair {
 
     string public name;
     string public symbol;
-    uint8 public decimals;
+    uint8 public constant decimals = 18;
 
     // Used to denote stable or volatile pair, not immutable since construction happens in the initialize method for CREATE2 deterministic addresses
-    bool public stable;
+    bool public immutable stable;
 
     uint public totalSupply = 0;
 
@@ -162,10 +162,9 @@ contract BaseV1Pair {
     event Transfer(address indexed from, address indexed to, uint amount);
     event Approval(address indexed owner, address indexed spender, uint amount);
 
-    address public factory;
-    address public token0;
-    address public token1;
-    address public fees;
+    address public immutable token0;
+    address public immutable token1;
+    address public immutable fees;
 
     // Structure to capture time period obervations every 30 minutes, used for local oracles
     struct Observation {
@@ -187,8 +186,8 @@ contract BaseV1Pair {
 
     Observation[] public observations;
 
-    uint decimals0;
-    uint decimals1;
+    uint immutable decimals0;
+    uint immutable decimals1;
 
     uint112 public reserve0;
     uint112 public reserve1;
@@ -310,11 +309,7 @@ contract BaseV1Pair {
     }
 
     constructor() {
-        factory = msg.sender; // only factory is allowed to initialize
-        uint chainId;
-        assembly {
-            chainId := chainid()
-        }
+        uint chainId = block.chainid;
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
@@ -324,27 +319,23 @@ contract BaseV1Pair {
                 address(this)
             )
         );
-    }
 
-    // called once by the factory at time of deployment
-    function initialize(address _token0, address _token1, bool _stable) external {
-        require(msg.sender == factory, 'StableV1: FORBIDDEN'); // sufficient check
-        token0 = _token0;
-        token1 = _token1;
-        stable = _stable;
+        (address _token0, address _token1, bool _stable) = BaseV1Factory(msg.sender).getInitializable();
+        (token0, token1, stable) = (_token0, _token1, _stable);
         fees = address(new BaseV1Fees(_token0, _token1));
-        decimals = 18;
+        uint _decimals0 = 1;
+        uint _decimals1 = 1;
         if (_stable) {
-            decimals0 = 10**erc20(_token0).decimals();
-            decimals1 = 10**erc20(_token1).decimals();
+            _decimals0 = 10**erc20(_token0).decimals();
+            _decimals1 = 10**erc20(_token1).decimals();
             name = string(abi.encodePacked("StableV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
             symbol = string(abi.encodePacked("sAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
         } else {
-            decimals0 = 1;
-            decimals1 = 1;
             name = string(abi.encodePacked("VolatileV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
             symbol = string(abi.encodePacked("vAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
         }
+        decimals0 = _decimals0;
+        decimals1 = _decimals1;
 
         observations.push(Observation(uint32(block.timestamp % 2**32), 0, 0));
     }
@@ -698,6 +689,10 @@ contract BaseV1Factory {
     address[] public allPairs;
     mapping(address => bool) public isPair; // simplified check if its a pair, given that `stable` flag might not be available in peripherals
 
+    address _temp0;
+    address _temp1;
+    bool _temp;
+
     event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint);
 
     function allPairsLength() external view returns (uint) {
@@ -708,17 +703,20 @@ contract BaseV1Factory {
         return keccak256(type(BaseV1Pair).creationCode);
     }
 
+    function getInitializable() external view returns (address, address, bool) {
+        return (_temp0, _temp1, _temp);
+    }
+
     function createPair(address tokenA, address tokenB, bool stable) external returns (address pair) {
         require(tokenA != tokenB, 'IA'); // BaseV1: IDENTICAL_ADDRESSES
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), 'ZA'); // BaseV1: ZERO_ADDRESS
         require(getPair[token0][token1][stable] == address(0), 'PE'); // BaseV1: PAIR_EXISTS - single check is sufficient
-        bytes memory bytecode = type(BaseV1Pair).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1, stable)); // notice salt includes stable as well, 3 parameters
-        assembly {
-            pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
-        }
-        BaseV1Pair(pair).initialize(token0, token1, stable);
+        _temp0 = token0;
+        _temp1 = token1;
+        _temp = stable;
+        pair = address(new BaseV1Pair{salt:salt}());
         getPair[token0][token1][stable] = pair;
         getPair[token1][token0][stable] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);
