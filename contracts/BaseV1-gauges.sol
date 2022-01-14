@@ -22,7 +22,7 @@ interface erc20 {
 interface ve {
     function token() external view returns (address);
     function balanceOfNFT(uint, uint) external view returns (uint);
-    function balanceOfAddress(address) external view returns (uint);
+    function balanceOfAddress(address, address) external view returns (uint);
     function isApprovedOrOwner(address, uint) external view returns (bool);
 }
 
@@ -120,7 +120,7 @@ contract Gauge {
     function derivedBalance(address account) public view returns (uint) {
         uint _balance = balanceOf[account];
         uint _derived = _balance * 40 / 100;
-        uint _adjusted = (totalSupply * ve(_ve).balanceOfAddress(account) / erc20(_ve).totalSupply()) * 60 / 100;
+        uint _adjusted = (totalSupply * ve(_ve).balanceOfAddress(account, address(this)) / erc20(_ve).totalSupply()) * 60 / 100;
         return Math.min(_derived + _adjusted, _balance);
     }
 

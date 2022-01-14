@@ -10,7 +10,7 @@ contract ve {
         token = _token;
     }
 
-    function balance(address account) external view returns (uint) {
+    function balanceOfAddress(address account, address gauge) external view returns (uint) {
         return 100e18;
     }
 

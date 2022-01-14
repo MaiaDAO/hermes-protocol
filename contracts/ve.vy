@@ -1291,7 +1291,7 @@ def _get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
 @view
 @external
 def get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
-    return _get_adjusted_ve_balance(_tokenId, _gauge)
+    return self._get_adjusted_ve_balance(_tokenId, _gauge)
 
 @external
 def update_delegation_records(_tokenId: uint256, _gauge: address) -> bool:
