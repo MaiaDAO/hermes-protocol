@@ -215,6 +215,9 @@ contract Gauge is RewardBase {
         rewardPerTokenStored[token] = rewardPerToken(token);
         lastUpdateTime[token] = lastTimeRewardApplicable(token);
         if (account != address(0)) {
+            if (userRewardPerTokenPaid[token][account] == 0) {
+                userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
+            }
             rewards[token][account] = earned(token, account);
             userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
         }
