@@ -198,6 +198,8 @@ delegated_to: HashMap[uint256, HashMap[address, BoostData]]
 
 MIN_VE: constant(uint256) = 2500 * 10**18
 
+blockTransfers: HashMap[address, bool]
+
 # @dev Current count of token
 tokenId: uint256
 
@@ -520,6 +522,7 @@ def _transferFrom(_from: address, _to: address, _tokenId: uint256, _sender: addr
     """
     # Check requirements
     assert self._isApprovedOrOwner(_sender, _tokenId)
+    assert not self.blockTransfers[_to]
     # Throws if `_to` is the zero address
     assert _to != ZERO_ADDRESS
     # Clear approval. Throws if `_from` is not the current owner
@@ -579,6 +582,10 @@ def safeTransferFrom(
         # Throws if transfer destination is a contract which does not implement 'onERC721Received'
         assert returnValue == method_id("onERC721Received(address,address,uint256,bytes)", output_type=bytes32)
 
+
+@external
+def toggleBlockTransfers(toggle: bool):
+    self.blockTransfers[msg.sender] = toggle
 
 @external
 def approve(_approved: address, _tokenId: uint256):
