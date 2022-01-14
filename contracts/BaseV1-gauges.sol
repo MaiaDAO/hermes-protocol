@@ -142,7 +142,9 @@ contract Gauge is RewardBase {
         stake = _stake;
         address __ve = BaseV1Gauges(msg.sender)._ve();
         _ve = __ve;
-        incentives.push(ve(__ve).token()); // assume the first incentive is the same token that creates ve
+        address _token = ve(__ve).token();
+        incentives.push(_token); // assume the first incentive is the same token that creates ve
+        isIncentive[_token] = true;
     }
 
     function rewardPerToken(address token) public override view returns (uint) {

@@ -599,7 +599,7 @@ contract BaseV1Pair {
             return ((_kA1 - _kB)-(_kB - _kA2)) * _decimalsOut / 1e18;
         } else {
             (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
-            return amountIn * reserveB / reserveA;
+            return amountIn * reserveB / reserveA + amountIn;
         }
     }
 
