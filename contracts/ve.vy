@@ -961,39 +961,6 @@ def balanceOfNFT(_tokenId: uint256, _t: uint256 = block.timestamp) -> uint256:
 
 @internal
 @view
-def _balanceOf(addr: address, _t: uint256 = block.timestamp) -> uint256:
-    """
-    @notice Get the current voting power for `msg.sender`
-    @param addr User wallet address
-    @param _t Epoch time to return voting power at
-    @return User voting power
-    """
-    _count: uint256 = self.ownerToNFTokenCount[addr]
-    _start: uint256 = 0
-    _balance: uint256 = 0
-    for i in range(MAX_LOCKS):
-        if (i >= _count):
-            break
-
-        _tokenId: uint256 = self.ownerToNFTokenIdList[addr][i]
-        _balance += self._balanceOfNFT(_tokenId, _t)
-    return _balance
-
-
-@external
-@view
-def balanceOfAddress(addr: address) -> uint256:
-    """
-    @notice Get the current voting power for `msg.sender`
-    @dev Adheres to the ERC20 `balanceOf` interface for Aragon compatibility
-    @param addr User wallet address
-    @param _t Epoch time to return voting power at
-    @return User voting power
-    """
-    return self._balanceOf(addr, block.timestamp)
-
-@internal
-@view
 def _balanceOfAtNFT(_tokenId: uint256, _block: uint256) -> uint256:
     """
     @notice Measure voting power of `_tokenId` at block height `_block`
@@ -1280,8 +1247,8 @@ def cancel_delegation(_delegator: uint256, _gauge: address) -> bool:
     return True
 
 @view
-@external
-def get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
+@internal
+def _get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
     """
     @notice Get the adjusted ve- balance of a token after delegation
     @param _tokenId NFT to query a ve- balance for
@@ -1321,6 +1288,11 @@ def get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
 
     return voting_balance
 
+@view
+@external
+def get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
+    return _get_adjusted_ve_balance(_tokenId, _gauge)
+
 @external
 def update_delegation_records(_tokenId: uint256, _gauge: address) -> bool:
     """
@@ -1353,3 +1325,34 @@ def update_delegation_records(_tokenId: uint256, _gauge: address) -> bool:
             adjusted_length -= 1
 
     return True
+
+@internal
+@view
+def _balanceOfAddress(addr: address, gauge: address) -> uint256:
+    """
+    @notice Get the current voting power for `msg.sender`
+    @param addr User wallet address
+    @return User voting power
+    """
+    _count: uint256 = self.ownerToNFTokenCount[addr]
+    _start: uint256 = 0
+    _balance: uint256 = 0
+    for i in range(MAX_LOCKS):
+        if (i >= _count):
+            break
+
+        _tokenId: uint256 = self.ownerToNFTokenIdList[addr][i]
+        _balance += self._get_adjusted_ve_balance(_tokenId, gauge)
+    return _balance
+
+
+@external
+@view
+def balanceOfAddress(addr: address, gauge: address) -> uint256:
+    """
+    @notice Get the current voting power for `msg.sender`
+    @dev Adheres to the ERC20 `balanceOf` interface for Aragon compatibility
+    @param addr User wallet address
+    @return User voting power
+    """
+    return self._balanceOfAddress(addr, gauge)
