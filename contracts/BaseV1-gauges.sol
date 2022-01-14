@@ -58,6 +58,9 @@ contract Gauge {
     mapping(address => mapping(address => uint)) public enrolled;
     mapping(address => uint) public updated;
 
+    mapping(address => address[]) public tokensFor;
+    mapping(address => mapping(address => bool)) public tokensForExist;
+
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
 

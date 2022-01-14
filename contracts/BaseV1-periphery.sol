@@ -226,6 +226,7 @@ contract BaseV1Router01 {
             );
         }
     }
+
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,
@@ -239,5 +240,16 @@ contract BaseV1Router01 {
             routes[0].from, msg.sender, pairFor(routes[0].from, routes[0].to, routes[0].stable), amounts[0]
         );
         _swap(amounts, routes, to);
+    }
+
+    function UNSAFE_swapExactTokensForTokens(
+        uint[] memory amounts,
+        route[] calldata routes,
+        address to,
+        uint deadline
+    ) external ensure(deadline) returns (uint[] memory) {
+        _safeTransferFrom(routes[0].from, msg.sender, pairFor(routes[0].from, routes[0].to, routes[0].stable), amounts[0]);
+        _swap(amounts, routes, to);
+        return amounts;
     }
 }
