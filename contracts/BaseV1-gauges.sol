@@ -70,6 +70,15 @@ contract Gauge {
         _unlocked = 1;
     }
 
+    constructor(address _stake) {
+        stake = _stake;
+        address __ve = BaseV1Gauges(msg.sender)._ve();
+        _ve = __ve;
+        address _token = ve(__ve).token();
+        incentives.push(_token); // assume the first incentive is the same token that creates ve
+        isIncentive[_token] = true;
+    }
+
     function incentivesLength() external view returns (uint) {
         return incentives.length;
     }
@@ -86,46 +95,10 @@ contract Gauge {
 
     // allows a user to claim rewards for a given token
     function getReward(address token) public lock updateReward(token, msg.sender) {
-
+        enrolled[msg.sender][token] = block.timestamp;
         uint _reward = rewards[token][msg.sender];
         rewards[token][msg.sender] = 0;
-        _safeTransfer(token, msg.sender, _reward);
-    }
-
-    // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
-    // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
-    function notifyRewardAmount(address token, uint amount) external lock updateReward(token, address(0)) returns (bool) {
-        if (block.timestamp >= periodFinish[token]) {
-            _safeTransferFrom(token, msg.sender, address(this), amount);
-            rewardRate[token] = amount / DURATION;
-        } else {
-            uint _remaining = periodFinish[token] - block.timestamp;
-            uint _left = _remaining * rewardRate[token];
-            if (amount < _left) {
-              return false; // don't revert to help distribute run through its tokens
-            }
-            _safeTransferFrom(token, msg.sender, address(this), amount);
-            rewardRate[token] = (amount + _left) / DURATION;
-        }
-
-        lastUpdateTime[token] = block.timestamp;
-        periodFinish[token] = block.timestamp + DURATION;
-
-        // if it is a new incentive, add it to the stack
-        if (isIncentive[token] == false) {
-            isIncentive[token] = true;
-            incentives.push(token);
-        }
-        return true;
-    }
-
-    constructor(address _stake) {
-        stake = _stake;
-        address __ve = BaseV1Gauges(msg.sender)._ve();
-        _ve = __ve;
-        address _token = ve(__ve).token();
-        incentives.push(_token); // assume the first incentive is the same token that creates ve
-        isIncentive[_token] = true;
+        if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
     }
 
     function rewardPerToken(address token) public view returns (uint) {
@@ -193,10 +166,6 @@ contract Gauge {
         _safeTransfer(stake, msg.sender, amount);
     }
 
-    function enroll(address token) external lock updateReward(token, msg.sender) {
-        enrolled[msg.sender][token] = block.timestamp;
-    }
-
     function exit() external {
         if (balanceOf[msg.sender] > 0) _withdraw(balanceOf[msg.sender]); // include balance 0 check for tokens that might revert on 0 balance (assuming withdraw > exit)
         getReward(incentives[0]);
@@ -213,6 +182,33 @@ contract Gauge {
         if (account != address(0)) {
             kick(account);
         }
+    }
+
+    // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
+    // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
+    function notifyRewardAmount(address token, uint amount) external lock updateReward(token, address(0)) returns (bool) {
+        if (block.timestamp >= periodFinish[token]) {
+            _safeTransferFrom(token, msg.sender, address(this), amount);
+            rewardRate[token] = amount / DURATION;
+        } else {
+            uint _remaining = periodFinish[token] - block.timestamp;
+            uint _left = _remaining * rewardRate[token];
+            if (amount < _left) {
+              return false; // don't revert to help distribute run through its tokens
+            }
+            _safeTransferFrom(token, msg.sender, address(this), amount);
+            rewardRate[token] = (amount + _left) / DURATION;
+        }
+
+        lastUpdateTime[token] = block.timestamp;
+        periodFinish[token] = block.timestamp + DURATION;
+
+        // if it is a new incentive, add it to the stack
+        if (isIncentive[token] == false) {
+            isIncentive[token] = true;
+            incentives.push(token);
+        }
+        return true;
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
@@ -250,6 +246,9 @@ contract Bribe {
     mapping(address => mapping(uint => uint)) public userRewardPerTokenPaid;
     mapping(address => mapping(uint => uint)) public rewards;
 
+    mapping(uint => mapping(address => uint)) public enrolled;
+    mapping(uint => uint) public updated;
+
     uint public totalSupply;
     mapping(uint => uint) public balanceOf;
 
@@ -279,6 +278,7 @@ contract Bribe {
     // allows a user to claim rewards for a given token
     function getReward(uint tokenId, address token) public lock updateReward(token, tokenId) {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
+        enrolled[tokenId][token] = block.timestamp;
         uint _reward = rewards[token][tokenId];
         rewards[token][tokenId] = 0;
         _safeTransfer(token, msg.sender, _reward);
@@ -297,18 +297,24 @@ contract Bribe {
     }
 
     function earned(address token, uint tokenId) public view returns (uint) {
-        return (balanceOf[tokenId] * (rewardPerToken(token) - userRewardPerTokenPaid[token][tokenId]) / PRECISION) + rewards[token][tokenId];
+        uint _balance = balanceOf[tokenId];
+        if (updated[tokenId] > enrolled[tokenId][token]) {
+            _balance = 0;
+        }
+        return (_balance * (rewardPerToken(token) - userRewardPerTokenPaid[token][tokenId]) / PRECISION) + rewards[token][tokenId];
     }
 
     // This is an external function, but internal notation is used since it can only be called "internally" from BaseV1Gauges
     function _deposit(uint amount, uint tokenId) external {
         require(msg.sender == factory);
+        updated[tokenId] = block.timestamp;
         totalSupply += amount;
         balanceOf[tokenId] += amount;
     }
 
     function _withdraw(uint amount, uint tokenId) external {
         require(msg.sender == factory);
+        updated[tokenId] = block.timestamp;
         totalSupply -= amount;
         balanceOf[tokenId] -= amount;
     }
