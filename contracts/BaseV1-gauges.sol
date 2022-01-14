@@ -30,8 +30,16 @@ interface IBaseV1Factory {
     function isPair(address) external view returns (bool);
 }
 
+// Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
+// Nuance: getReward must be called at least once for tokens other than incentive[0] to start accrueing rewards
+contract Gauge {
 
-abstract contract RewardBase {
+    address public immutable stake; // the LP token that needs to be staked for rewards
+    address immutable _ve; // the ve token used for gauges
+
+    uint public derivedSupply;
+    mapping(address => uint) public derivedBalances;
+
     uint constant DURATION = 7 days; // rewards are released over 7 days
     uint constant PRECISION = 10 ** 18;
 
@@ -46,6 +54,9 @@ abstract contract RewardBase {
 
     mapping(address => mapping(address => uint)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint)) public rewards;
+
+    mapping(address => mapping(address => uint)) public enrolled;
+    mapping(address => uint) public updated;
 
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
@@ -68,12 +79,6 @@ abstract contract RewardBase {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    // how to calculate the reward given per token "staked" (or voted for bribes)
-    function rewardPerToken(address token) public virtual view returns (uint);
-
-    // how to calculate the total earnings of an address for a given token
-    function earned(address token, address account) public virtual view returns (uint);
-
     // total amount of rewards returned for the 7 day duration
     function getRewardForDuration(address token) external view returns (uint) {
         return rewardRate[token] * DURATION;
@@ -81,6 +86,7 @@ abstract contract RewardBase {
 
     // allows a user to claim rewards for a given token
     function getReward(address token) public lock updateReward(token, msg.sender) {
+
         uint _reward = rewards[token][msg.sender];
         rewards[token][msg.sender] = 0;
         _safeTransfer(token, msg.sender, _reward);
@@ -113,31 +119,6 @@ abstract contract RewardBase {
         return true;
     }
 
-    modifier updateReward(address token, address account) virtual;
-
-    function _safeTransfer(address token, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-}
-
-// Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
-// Nuance: getReward must be called at least once for tokens other than incentive[0] to start accrueing rewards
-contract Gauge is RewardBase {
-
-    address public immutable stake; // the LP token that needs to be staked for rewards
-    address immutable _ve; // the ve token used for gauges
-
-    uint public derivedSupply;
-    mapping(address => uint) public derivedBalances;
-
     constructor(address _stake) {
         stake = _stake;
         address __ve = BaseV1Gauges(msg.sender)._ve();
@@ -147,7 +128,7 @@ contract Gauge is RewardBase {
         isIncentive[_token] = true;
     }
 
-    function rewardPerToken(address token) public override view returns (uint) {
+    function rewardPerToken(address token) public view returns (uint) {
         if (totalSupply == 0) {
             return rewardPerTokenStored[token];
         } // derivedSupply is used instead of totalSupply to modify for ve-BOOST
@@ -170,8 +151,12 @@ contract Gauge is RewardBase {
         return Math.min(_derived + _adjusted, _balance);
     }
 
-    function earned(address token, address account) public override view returns (uint) {
-        return (derivedBalances[account] * (rewardPerToken(token) - userRewardPerTokenPaid[token][account]) / PRECISION) + rewards[token][account];
+    function earned(address token, address account) public view returns (uint) {
+        uint _balance = derivedBalances[account];
+        if (updated[account] > enrolled[account][token]) {
+            _balance = 0;
+        }
+        return (_balance * (rewardPerToken(token) - userRewardPerTokenPaid[token][account]) / PRECISION) + rewards[token][account];
     }
 
     /*function deposit() external {
@@ -187,6 +172,7 @@ contract Gauge is RewardBase {
     }
 
     function _deposit(uint amount, address account) internal lock updateReward(incentives[0], account) {
+        updated[account] = block.timestamp;
         _safeTransferFrom(stake, account, address(this), amount);
         totalSupply += amount;
         balanceOf[account] += amount;
@@ -201,9 +187,14 @@ contract Gauge is RewardBase {
     }
 
     function _withdraw(uint amount) internal lock updateReward(incentives[0], msg.sender) {
+        updated[msg.sender] = block.timestamp;
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
+    }
+
+    function enroll(address token) external lock updateReward(token, msg.sender) {
+        enrolled[msg.sender][token] = block.timestamp;
     }
 
     function exit() external {
@@ -211,13 +202,10 @@ contract Gauge is RewardBase {
         getReward(incentives[0]);
     }
 
-    modifier updateReward(address token, address account) override {
+    modifier updateReward(address token, address account) {
         rewardPerTokenStored[token] = rewardPerToken(token);
         lastUpdateTime[token] = lastTimeRewardApplicable(token);
         if (account != address(0)) {
-            if (userRewardPerTokenPaid[token][account] == 0) {
-                userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
-            }
             rewards[token][account] = earned(token, account);
             userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
         }
@@ -225,6 +213,18 @@ contract Gauge is RewardBase {
         if (account != address(0)) {
             kick(account);
         }
+    }
+
+    function _safeTransfer(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
+    }
+
+    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
 
