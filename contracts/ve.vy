@@ -979,7 +979,7 @@ def _balanceOf(addr: address, _t: uint256 = block.timestamp) -> uint256:
 
 @external
 @view
-def balance(addr: address) -> uint256:
+def balanceOfAddress(addr: address) -> uint256:
     """
     @notice Get the current voting power for `msg.sender`
     @dev Adheres to the ERC20 `balanceOf` interface for Aragon compatibility

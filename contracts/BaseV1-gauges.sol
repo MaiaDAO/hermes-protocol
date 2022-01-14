@@ -322,7 +322,7 @@ contract Bribe {
     modifier updateReward(address token, uint tokenId) {
         rewardPerTokenStored[token] = rewardPerToken(token);
         lastUpdateTime[token] = lastTimeRewardApplicable(token);
-        if (tokenId != type(uint).max) {
+        if (tokenId != 0) {
             rewards[token][tokenId] = earned(token, tokenId);
             userRewardPerTokenPaid[token][tokenId] = rewardPerTokenStored[token];
         }

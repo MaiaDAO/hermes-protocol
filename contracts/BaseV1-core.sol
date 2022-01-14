@@ -590,13 +590,45 @@ contract BaseV1Pair {
         amountIn -= amountIn / 10000; // remove fee from amount received
         if (stable) {
             (uint _k0, uint _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1) : (_reserve0, amountIn+_reserve1);
-            uint _decimalsOut = tokenIn == token0 ? decimals1 : decimals0;
             uint _kB = Math.sqrt(Math.sqrt(_k(_reserve0, _reserve1)*1e18)*1e18) * 2;
             uint _kA1 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
-            uint _iteration_1 = (_kA1 - _kB) * _decimalsOut / 1e18;
-            (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_iteration_1) : (_reserve0-_iteration_1, amountIn+_reserve1);
+            uint _yOut0 = (_kA1 - _kB);
+
+            (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut0) : (_reserve0-_yOut0, amountIn+_reserve1);
             uint _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
-            return ((_kA1 - _kB)-(_kB - _kA2)) * _decimalsOut / 1e18;
+            while (_kA2 < _kB) {
+                uint _diff = _kB - _kA2;
+                _yOut0 -= _diff;
+                (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut0) : (_reserve0-_yOut0, amountIn+_reserve1);
+                _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
+            }
+            uint _yOut1 = _yOut0;
+            while (_kA2 > _kB) {
+                uint _diff = _kA2 - _kB;
+                _yOut1 += _diff;
+                (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut1) : (_reserve0-_yOut1, amountIn+_reserve1);
+                _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
+            }
+
+            uint _yOut = (_yOut0+_yOut1)/2;
+            {
+            for (uint i = 0; i < 255; i++) {
+                (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut) : (_reserve0-_yOut, amountIn+_reserve1);
+                _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
+
+                if (_kA2 > _kB) {
+                    _yOut = (_yOut+_yOut0)/2;
+                } else if (_kA2 < _kB) {
+                    _yOut = (_yOut+_yOut1)/2;
+                } else {
+                    break;
+                }
+            }
+          }
+
+
+
+            return _yOut * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
         } else {
             (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
             return amountIn * reserveB / reserveA + amountIn;
