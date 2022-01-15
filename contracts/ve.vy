@@ -109,30 +109,6 @@ event Supply:
     prevSupply: uint256
     supply: uint256
 
-event NewDelegation:
-    delegator: uint256
-    gauge: indexed(address)
-    receiver: uint256
-    pct: uint256
-    cancel_time: uint256
-    expire_time: uint256
-
-event CancelledDelegation:
-    delegator: uint256
-    gauge: indexed(address)
-    receiver: uint256
-    cancelled_by: address
-
-struct BoostData:
-    tokenId: uint256
-    pct: uint256
-    cancel_time: uint256
-    expire_time: uint256
-
-struct ReceivedBoost:
-    length: uint256
-    data: BoostData[10]
-
 # @dev Emits when ownership of any NFT changes by any mechanism. This event emits when NFTs are
 #      created (`from` == 0) and destroyed (`to` == 0). Exception: during contract creation, any
 #      number of NFTs may be created and assigned without emitting Transfer. At the time of any
@@ -170,7 +146,6 @@ event ApprovalForAll:
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
 MULTIPLIER: constant(uint256) = 10 ** 18
-MAX_LOCKS: constant(int128) = 1024
 
 token: public(address)
 supply: public(uint256)
@@ -187,15 +162,6 @@ name: public(String[64])
 symbol: public(String[32])
 version: public(String[32])
 decimals: public(uint256)
-
-# user -> number of active boost delegations
-delegation_count: public(HashMap[uint256, uint256])
-
-# user -> gauge -> data on boosts delegated to user
-delegation_data: HashMap[uint256, HashMap[address, ReceivedBoost]]
-
-# user -> gauge -> data about delegation user has made for this gauge
-delegated_to: HashMap[uint256, HashMap[address, BoostData]]
 
 MIN_VE: constant(uint256) = 2500 * 10**18
 
@@ -1031,21 +997,6 @@ def _balanceOfAtNFT(_tokenId: uint256, _block: uint256) -> uint256:
     else:
         return 0
 
-
-
-@external
-@view
-def balanceOfAt(addr: address, _block: uint256) -> uint256:
-    _count: uint256 = self.ownerToNFTokenCount[addr]
-    _balance: uint256 = 0
-    for i in range(MAX_LOCKS):
-        if (i >= _count):
-            break
-
-        _tokenId: uint256 = self.ownerToNFTokenIdList[addr][i]
-        _balance += self._balanceOfAtNFT(_tokenId, _block)
-    return _balance
-
 @external
 @view
 def balanceOfAtNFT(_tokenId: uint256, _block: uint256) -> uint256:
@@ -1117,233 +1068,3 @@ def totalSupplyAt(_block: uint256) -> uint256:
     # Now dt contains info on how far are we beyond point
 
     return self.supply_at(point, point.ts + dt)
-
-@view
-@external
-def get_delegated_to(_delegator: uint256, _gauge: address) -> (uint256, uint256, uint256, uint256):
-    """
-    @notice Get data about a token's boost delegation
-    @param _tokenId NFT to query delegation data for
-    @param _gauge Gauge address to query. Use ZERO_ADDRESS for global delegation.
-    @return token receiving the delegated boost
-            delegated boost pct (out of 10000)
-            cancellable timestamp
-            expiry timestamp
-    """
-    data: BoostData = self.delegated_to[_delegator][_gauge]
-    return (
-        data.tokenId,
-        data.pct,
-        data.cancel_time,
-        data.expire_time
-    )
-
-@view
-@external
-def get_delegation_data(
-    _receiver: uint256,
-    _gauge: address,
-    _idx: uint256
-) -> (uint256, uint256, uint256, uint256):
-    """
-    @notice Get data delegation toward a token
-    @param _receiver tokenId to query delegation data for
-    @param _gauge Gauge address to query. Use ZERO_ADDRESS for global delegation.
-    @param _idx Data index. Each account can receive a max of 10 delegations per pool.
-    @return tokenId of the delegator
-            delegated boost pct (out of 10000)
-            cancellable timestamp
-            expiry timestamp
-    """
-    data: BoostData = self.delegation_data[_receiver][_gauge].data[_idx]
-    return (
-        data.tokenId,
-        data.pct,
-        data.cancel_time,
-        data.expire_time
-    )
-
-
-@internal
-def _delete_delegation_data(_delegator: uint256, _gauge: address, _delegation_data: BoostData):
-    # delete record for the delegator
-    _empty: BoostData = BoostData({tokenId:0,pct:0,cancel_time:0,expire_time:0})
-
-    self.delegated_to[_delegator][_gauge] = _empty
-    self.delegation_count[_delegator] -= 1
-
-    receiver: uint256 = _delegation_data.tokenId
-    length: uint256 = self.delegation_data[receiver][_gauge].length
-
-    # delete record for the receiver
-    for i in range(10):
-        if i == length - 1:
-            self.delegation_data[receiver][_gauge].data[i] = _empty
-            break
-        if self.delegation_data[receiver][_gauge].data[i] == _delegation_data:
-            self.delegation_data[receiver][_gauge].data[i] = self.delegation_data[receiver][_gauge].data[length-1]
-            self.delegation_data[receiver][_gauge].data[length-1] = _empty
-
-@external
-def delegate_boost(
-    _delegator: uint256,
-    _gauge: address,
-    _receiver: uint256,
-    _pct: uint256,
-    _cancel_time: uint256,
-    _expire_time: uint256
-) -> bool:
-    """
-    @notice Delegate per-gauge or global boost to another account
-    @param _delegator Address of the user delegating boost. The caller must be the
-                      delegator or the approved operator of the delegator.
-    @param _gauge Address of the gauge to delegate for. Set as ZERO_ADDRESS for
-                  global delegation. Global delegation is not possible if there is
-                  also one or more active per-gauge delegations.
-    @param _receiver Address to delegate boost to.
-    @param _pct Percentage of boost to delegate. 100% is expressed as 10000.
-    @param _cancel_time Delegation cannot be cancelled before this time.
-    @param _expire_time Delegation automatically expires at this time.
-    @return bool success
-    """
-
-    assert self._isApprovedOrOwner(msg.sender, _delegator)
-    assert _delegator != _receiver, "Cannot delegate to self"
-    assert _pct >= 100, "Percent too low"
-    assert _pct <= 10000, "Percent too high"
-    assert _expire_time < 2**40, "Expiry time too high"
-    assert _expire_time > block.timestamp, "Already expired"
-    assert _cancel_time <= _expire_time, "Cancel time after expiry time"
-
-    # check for minimum ve- balance, used to prevent 0 ve- delegation spam
-    assert self._balanceOfNFT(_delegator) >= MIN_VE, "Insufficient ve- to delegate"
-
-    # check for an existing, expired delegation
-    data: BoostData = self.delegated_to[_delegator][_gauge]
-    if data.tokenId != 0:
-        assert data.expire_time <= block.timestamp, "Existing delegation has not expired"
-        self._delete_delegation_data(_delegator, _gauge, data)
-
-    if _gauge == ZERO_ADDRESS:
-        assert self.delegation_count[_delegator] == 0, "Cannot delegate globally while per-gauge is active"
-    else:
-        assert self.delegated_to[_delegator][ZERO_ADDRESS].tokenId == 0, "Cannot delegate per-gauge while global is active"
-
-    # tightly pack the delegation data
-    data.tokenId = _receiver
-    data.pct = _pct
-    data.cancel_time = _cancel_time
-    data.expire_time = _expire_time
-    idx: uint256 = self.delegation_data[_receiver][_gauge].length
-
-    self.delegation_data[_receiver][_gauge].data[idx] = data
-    self.delegated_to[_delegator][_gauge] = data
-    self.delegation_data[_receiver][_gauge].length = idx + 1
-
-    log NewDelegation(_delegator, _gauge, _receiver, _pct, _cancel_time, _expire_time)
-    return True
-
-@external
-def cancel_delegation(_delegator: uint256, _gauge: address) -> bool:
-    """
-    @notice Cancel an existing boost delegation
-    @param _delegator tokenId of the user delegating boost. The caller can be the
-                      delegator, the receiver, the approved operator of the delegator
-                      or receiver. The delegator can cancel after the cancel time
-                      has passed, the receiver can cancel at any time.
-    @param _gauge Address of the gauge to cancel delegattion for. Set as ZERO_ADDRESS
-                  for global delegation.
-    @return bool success
-    """
-    data: BoostData = self.delegated_to[_delegator][_gauge]
-    assert data.tokenId != 0, "No delegation for this pool"
-
-    receiver: uint256 = data.tokenId
-    if not self._isApprovedOrOwner(msg.sender, receiver):
-        assert self._isApprovedOrOwner(msg.sender, receiver), "Only owner or operator"
-        assert data.cancel_time <= block.timestamp, "Not yet cancellable"
-
-    self._delete_delegation_data(_delegator, _gauge, data)
-
-    log CancelledDelegation(_delegator, _gauge, receiver, msg.sender)
-    return True
-
-@view
-@internal
-def _get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
-    """
-    @notice Get the adjusted ve- balance of a token after delegation
-    @param _tokenId NFT to query a ve- balance for
-    @param _gauge Gauge address
-    @return Adjusted ve- balance after delegation
-    """
-    # query the initial ve balance for `_tokenId`
-    voting_balance: uint256 = self._balanceOfNFT(_tokenId)
-
-    # check if the _tokenId has delegated any ve and reduce the voting balance
-    delegation_count: uint256 = self.delegation_count[_tokenId]
-    if delegation_count != 0:
-        is_global: bool = False
-        # apply global delegation
-        if delegation_count == 1:
-            data: BoostData = self.delegated_to[_tokenId][ZERO_ADDRESS]
-            if data.cancel_time > block.timestamp:
-                voting_balance = voting_balance * (10000 - data.pct) / 10000
-                is_global = True
-        # apply pool-specific delegation
-        if not is_global:
-            data: BoostData = self.delegated_to[_tokenId][_gauge]
-            if data.cancel_time > block.timestamp:
-                voting_balance = voting_balance * (10000 - data.pct) / 10000
-
-    for target in [_gauge, ZERO_ADDRESS]:
-        length: uint256 = self.delegation_data[_tokenId][target].length
-        if length > 0:
-            for i in range(10):
-                if i == length:
-                    break
-                data: BoostData = self.delegation_data[_tokenId][target].data[i]
-                if data.cancel_time > block.timestamp:
-                    delegator: uint256 = data.tokenId
-                    delegator_balance: uint256 = self._balanceOfNFT(delegator)
-                    voting_balance += delegator_balance * data.pct / 10000
-
-    return voting_balance
-
-@view
-@external
-def get_adjusted_ve_balance(_tokenId: uint256, _gauge: address) -> uint256:
-    return self._get_adjusted_ve_balance(_tokenId, _gauge)
-
-@external
-def update_delegation_records(_tokenId: uint256, _gauge: address) -> bool:
-    """
-    @notice Remove data about any expired delegations for a _tokenId.
-    @dev Reduces gas costs when calling `get_adjusted_ve_balance` on
-         an address with expired delegations.
-    @param _tokenId token Id to update records for.
-    @param _gauge Gauge address. Use `ZERO_ADDRESS` for global delegations.
-    """
-    length: uint256 = self.delegation_data[_tokenId][_gauge].length - 1
-    adjusted_length: uint256 = length
-
-    # iterate in reverse over `delegation_data` and remove expired records
-    for i in range(10):
-        if i > length:
-            break
-        idx: uint256 = length - i
-        data: BoostData = self.delegation_data[_tokenId][_gauge].data[idx]
-        if data.cancel_time <= block.timestamp:
-            # delete record for the delegator
-            delegator: uint256 = data.tokenId
-            self.delegated_to[delegator][_gauge] = BoostData({tokenId:0,pct:0,cancel_time:0,expire_time:0})
-            self.delegation_count[delegator] -= 1
-
-            # delete record for the receiver
-            if idx == adjusted_length:
-                self.delegation_data[_tokenId][_gauge].data[idx] = BoostData({tokenId:0,pct:0,cancel_time:0,expire_time:0})
-            else:
-                self.delegation_data[_tokenId][_gauge].data[idx] = self.delegation_data[_tokenId][_gauge].data[adjusted_length]
-            adjusted_length -= 1
-
-    return True
