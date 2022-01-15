@@ -89,6 +89,7 @@ DEPOSIT_FOR_TYPE: constant(int128) = 0
 CREATE_LOCK_TYPE: constant(int128) = 1
 INCREASE_LOCK_AMOUNT: constant(int128) = 2
 INCREASE_UNLOCK_TIME: constant(int128) = 3
+MERGE_TYPE: constant(int128) = 4
 
 event Deposit:
     provider: indexed(address)
@@ -761,7 +762,7 @@ def _checkpoint(_tokenId: uint256, old_locked: LockedBalance, new_locked: Locked
 
 
 @internal
-def _deposit_for(_from: address, _tokenId: uint256, _value: uint256, unlock_time: uint256, locked_balance: LockedBalance, type: int128):
+def _deposit_for(_from: address, _tokenId: uint256, _value: uint256, unlock_time: uint256, locked_balance: LockedBalance, type: int128, merge: bool = False):
     """
     @notice Deposit and lock tokens for a user
     @param _tokenId NFT that holds lock
@@ -786,11 +787,25 @@ def _deposit_for(_from: address, _tokenId: uint256, _value: uint256, unlock_time
     # _locked.end > block.timestamp (always)
     self._checkpoint(_tokenId, old_locked, _locked)
 
-    if _value != 0:
+    if _value != 0 and not merge:
         assert ERC20(self.token).transferFrom(_from, self, _value)
 
     log Deposit(_from, _tokenId, _value, _locked.end, type, block.timestamp)
     log Supply(supply_before, supply_before + _value)
+
+@external
+def merge(_from: uint256, _to: uint256):
+    assert self._isApprovedOrOwner(msg.sender, _from)
+    assert self._isApprovedOrOwner(msg.sender, _to)
+
+    _locked0: LockedBalance = self.locked[_from]
+    _locked1: LockedBalance = self.locked[_to]
+    value0: uint256 = convert(_locked0.amount, uint256)
+    end: uint256 = max(_locked0.end, _locked1.end)
+    _empty: LockedBalance = LockedBalance({end:0,amount:0})
+
+    self._checkpoint(_from, _locked0, _empty)
+    self._deposit_for(msg.sender, _to, value0, end, _locked1, MERGE_TYPE)
 
 
 @external
@@ -1332,34 +1347,3 @@ def update_delegation_records(_tokenId: uint256, _gauge: address) -> bool:
             adjusted_length -= 1
 
     return True
-
-@internal
-@view
-def _balanceOfAddress(addr: address, gauge: address) -> uint256:
-    """
-    @notice Get the current voting power for `msg.sender`
-    @param addr User wallet address
-    @return User voting power
-    """
-    _count: uint256 = self.ownerToNFTokenCount[addr]
-    _start: uint256 = 0
-    _balance: uint256 = 0
-    for i in range(MAX_LOCKS):
-        if (i >= _count):
-            break
-
-        _tokenId: uint256 = self.ownerToNFTokenIdList[addr][i]
-        _balance += self._get_adjusted_ve_balance(_tokenId, gauge)
-    return _balance
-
-
-@external
-@view
-def balanceOfAddress(addr: address, gauge: address) -> uint256:
-    """
-    @notice Get the current voting power for `msg.sender`
-    @dev Adheres to the ERC20 `balanceOf` interface for Aragon compatibility
-    @param addr User wallet address
-    @return User voting power
-    """
-    return self._balanceOfAddress(addr, gauge)

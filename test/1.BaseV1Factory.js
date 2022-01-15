@@ -170,7 +170,7 @@ describe("BaseV1Factory", function () {
     bribe = await Bribe.attach(bribe_address);
 
     await pair.approve(gauge.address, pair_1000);
-    await gauge.deposit(pair_1000, owner.address);
+    await gauge.deposit_test(pair_1000, owner.address);
     expect(await gauge.totalSupply()).to.equal(pair_1000);
     expect(await gauge.earned(ve.address, owner.address)).to.equal(0);
   });
@@ -196,7 +196,7 @@ describe("BaseV1Factory", function () {
   it("exit & getReward gauge stake", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
-    await gauge.deposit(pair_1000, owner.address);
+    await gauge.deposit_test(pair_1000, owner.address);
     await gauge.exit();
     expect(await gauge.totalSupply()).to.equal(0);
   });

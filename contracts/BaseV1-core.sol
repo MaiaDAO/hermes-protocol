@@ -631,7 +631,7 @@ contract BaseV1Pair {
             return _yOut * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
         } else {
             (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
-            return amountIn * reserveB / reserveA + amountIn;
+            return amountIn * reserveB / (reserveA + amountIn);
         }
     }
 
