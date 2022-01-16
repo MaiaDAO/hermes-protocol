@@ -67,11 +67,24 @@ contract Gauge {
        uint balanceOf;
    }
 
+   /// @notice A checkpoint for marking balance from a given block
+  struct RewardCheckpoint {
+      uint fromBlock;
+      uint fromTimestamp;
+      uint rewardRate;
+  }
+
    /// @notice A record of balance checkpoints for each account, by index
    mapping (address => mapping (uint => Checkpoint)) public checkpoints;
 
    /// @notice The number of checkpoints for each account
-   mapping (address => uint32) public numCheckpoints;
+   mapping (address => uint) public numCheckpoints;
+
+   /// @notice A record of balance checkpoints for each token, by index
+   mapping (address => mapping (uint => RewardCheckpoint)) public rewardCheckpoints;
+
+   /// @notice The number of checkpoints for each token
+   mapping (address => uint) public rewardNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -97,7 +110,7 @@ contract Gauge {
      * @return The balance for `account`
      */
     function getCurrentBalance(address account) external view returns (uint) {
-        uint32 nCheckpoints = numCheckpoints[account];
+        uint nCheckpoints = numCheckpoints[account];
         return nCheckpoints > 0 ? checkpoints[account][nCheckpoints - 1].balanceOf : 0;
     }
 
@@ -111,14 +124,14 @@ contract Gauge {
     function getPriorBalance(address account, uint blockNumber) public view returns (uint) {
         require(blockNumber < block.number);
 
-        uint32 nCheckpoints = numCheckpoints[account];
+        uint nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
             return 0;
         }
 
         // First check most recent balance
         if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
-            return checkpoints[account][nCheckpoints - 1].votes;
+            return checkpoints[account][nCheckpoints - 1].balanceOf;
         }
 
         // Next check implicit zero balance
@@ -126,10 +139,10 @@ contract Gauge {
             return 0;
         }
 
-        uint32 lower = 0;
-        uint32 upper = nCheckpoints - 1;
+        uint lower = 0;
+        uint upper = nCheckpoints - 1;
         while (upper > lower) {
-            uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
             Checkpoint memory cp = checkpoints[account][center];
             if (cp.fromBlock == blockNumber) {
                 return cp.balanceOf;
@@ -144,13 +157,25 @@ contract Gauge {
 
     function _writeCheckpoint(address account, uint newBalanceOf) internal {
       uint _blockNumber = block.number;
-      uint _nCheckPoints = numCheckPoints[account];
+      uint _nCheckPoints = numCheckpoints[account];
 
       if (_nCheckPoints > 0 && checkpoints[account][_nCheckPoints - 1].fromBlock == _blockNumber) {
           checkpoints[account][_nCheckPoints - 1].balanceOf = newBalanceOf;
       } else {
           checkpoints[account][_nCheckPoints] = Checkpoint(_blockNumber, newBalanceOf);
           numCheckpoints[account] = _nCheckPoints + 1;
+      }
+    }
+
+    function _writeRewardCheckpoint(address token, uint reward) internal {
+      uint _blockNumber = block.number;
+      uint _nCheckPoints = rewardNumCheckpoints[token];
+
+      if (_nCheckPoints > 0 && rewardCheckpoints[token][_nCheckPoints - 1].fromBlock == _blockNumber) {
+        rewardCheckpoints[token][_nCheckPoints - 1].rewardRate = reward;
+      } else {
+          rewardCheckpoints[token][_nCheckPoints] = RewardCheckpoint(_blockNumber, block.timestamp, reward);
+          rewardNumCheckpoints[token] = _nCheckPoints + 1;
       }
     }
 
@@ -174,7 +199,6 @@ contract Gauge {
 
     // allows a user to claim rewards for a given token
     function _getReward(address token) internal lock updateReward(token, msg.sender) {
-        enrolled[msg.sender][token] = block.timestamp;
         uint _reward = rewards[token][msg.sender];
         rewards[token][msg.sender] = 0;
         if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
@@ -210,9 +234,6 @@ contract Gauge {
 
     function earned(address token, address account) public view returns (uint) {
         uint _balance = derivedBalances[account];
-        if (updated[account] > enrolled[account][token]) {
-            _balance = 0;
-        }
         return (_balance * (rewardPerToken(token) - userRewardPerTokenPaid[token][account]) / PRECISION) + rewards[token][account];
     }
 
@@ -230,11 +251,10 @@ contract Gauge {
 
     function _deposit(uint amount, uint tokenId) internal lock updateReward(incentives[0], msg.sender) {
         tokenIds[msg.sender] = tokenId;
-        updated[msg.sender] = block.timestamp;
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
-        _moveDelegates(delegates[src], delegates[dst], amount);
+        _writeCheckpoint(msg.sender, balanceOf[msg.sender]);
     }
 
     function withdraw() external {
@@ -247,10 +267,10 @@ contract Gauge {
 
     function _withdraw(uint amount) internal lock updateReward(incentives[0], msg.sender) {
         tokenIds[msg.sender] = 0;
-        updated[msg.sender] = block.timestamp;
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
+        _writeCheckpoint(msg.sender, balanceOf[msg.sender]);
     }
 
     function exit() external {
@@ -286,6 +306,7 @@ contract Gauge {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
+        _writeRewardCheckpoint(token, rewardRate[token]);
 
         lastUpdateTime[token] = block.timestamp;
         periodFinish[token] = block.timestamp + DURATION;
