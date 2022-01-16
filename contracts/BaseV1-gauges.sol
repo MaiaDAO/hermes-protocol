@@ -23,6 +23,7 @@ interface ve {
     function token() external view returns (address);
     function get_adjusted_ve_balance(uint, address) external view returns (uint);
     function isApprovedOrOwner(address, uint) external view returns (bool);
+    function ownerOf(uint) external view returns (address);
     function transferFrom(address, address, uint) external;
 }
 
@@ -57,6 +58,8 @@ contract Gauge {
 
     mapping(address => mapping(address => uint)) public enrolled;
     mapping(address => uint) public updated;
+
+    mapping(address => uint) public tokenIds;
 
     mapping(address => address[]) public tokensFor;
     mapping(address => mapping(address => bool)) public tokensForExist;
@@ -96,9 +99,12 @@ contract Gauge {
         return rewardRate[token] * DURATION;
     }
 
+    function getReward(address token) external {
+        _getReward(token);
+    }
+
     // allows a user to claim rewards for a given token
-    function getReward(address token, uint tokenId) public lock updateReward(token, msg.sender, tokenId) {
-        require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
+    function _getReward(address token) internal lock updateReward(token, msg.sender) {
         enrolled[msg.sender][token] = block.timestamp;
         uint _reward = rewards[token][msg.sender];
         rewards[token][msg.sender] = 0;
@@ -113,18 +119,23 @@ contract Gauge {
     }
 
     // used to update an account internally and externally, since ve decays over times, an address could have 0 balance but still register here
-    function kick(address account, uint tokenId) public {
+    function kick(address account) public {
         uint _derivedBalance = derivedBalances[account];
         derivedSupply -= _derivedBalance;
-        _derivedBalance = derivedBalance(account, tokenId);
+        _derivedBalance = derivedBalance(account);
         derivedBalances[account] = _derivedBalance;
         derivedSupply += _derivedBalance;
     }
 
-    function derivedBalance(address account, uint tokenId) public view returns (uint) {
+    function derivedBalance(address account) public view returns (uint) {
+        uint _tokenId = tokenIds[account];
         uint _balance = balanceOf[account];
         uint _derived = _balance * 40 / 100;
-        uint _adjusted = (totalSupply * ve(_ve).get_adjusted_ve_balance(tokenId, address(this)) / erc20(_ve).totalSupply()) * 60 / 100;
+        uint _adjusted = 0;
+        if (account == ve(_ve).ownerOf(_tokenId)) {
+            _adjusted = ve(_ve).get_adjusted_ve_balance(_tokenId, address(this));
+        }
+        _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
         return Math.min(_derived + _adjusted, _balance);
     }
 
@@ -148,36 +159,36 @@ contract Gauge {
         _deposit(amount, tokenId);
     }
 
-    function _deposit(uint amount, uint tokenId) internal lock updateReward(incentives[0], msg.sender, tokenId) {
-        require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
+    function _deposit(uint amount, uint tokenId) internal lock updateReward(incentives[0], msg.sender) {
+        tokenIds[msg.sender] = tokenId;
         updated[msg.sender] = block.timestamp;
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
     }
 
-    function withdraw(uint tokenId) external {
-        _withdraw(balanceOf[msg.sender], tokenId);
+    function withdraw() external {
+        _withdraw(balanceOf[msg.sender]);
     }
 
-    function withdraw(uint amount, uint tokenId) external {
-        _withdraw(amount, tokenId);
+    function withdraw(uint amount) external {
+        _withdraw(amount);
     }
 
-    function _withdraw(uint amount, uint tokenId) internal lock updateReward(incentives[0], msg.sender, tokenId) {
-        require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
+    function _withdraw(uint amount) internal lock updateReward(incentives[0], msg.sender) {
+        tokenIds[msg.sender] = 0;
         updated[msg.sender] = block.timestamp;
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
     }
 
-    function exit(uint tokenId) external {
-        if (balanceOf[msg.sender] > 0) _withdraw(balanceOf[msg.sender], tokenId); // include balance 0 check for tokens that might revert on 0 balance (assuming withdraw > exit)
-        getReward(incentives[0], tokenId);
+    function exit() external {
+        if (balanceOf[msg.sender] > 0) _withdraw(balanceOf[msg.sender]); // include balance 0 check for tokens that might revert on 0 balance (assuming withdraw > exit)
+        _getReward(incentives[0]);
     }
 
-    modifier updateReward(address token, address account, uint tokenId) {
+    modifier updateReward(address token, address account) {
         rewardPerTokenStored[token] = rewardPerToken(token);
         lastUpdateTime[token] = lastTimeRewardApplicable(token);
         if (account != address(0)) {
@@ -186,13 +197,13 @@ contract Gauge {
         }
         _;
         if (account != address(0)) {
-            kick(account, tokenId);
+            kick(account);
         }
     }
 
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
-    function notifyRewardAmount(address token, uint amount) external lock updateReward(token, address(0), 0) returns (bool) {
+    function notifyRewardAmount(address token, uint amount) external lock updateReward(token, address(0)) returns (bool) {
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = amount / DURATION;
