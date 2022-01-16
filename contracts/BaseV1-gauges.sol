@@ -51,7 +51,6 @@ contract Gauge {
     mapping(address => uint) public rewardPerTokenStored;
 
     mapping(address => mapping(address => uint)) public lastEarn;
-    mapping(address => uint) public lastReward;
 
     mapping(address => uint) public tokenIds;
 
@@ -257,24 +256,19 @@ contract Gauge {
         return rewardRate[token] * DURATION;
     }
 
-    function getReward(address token) external {
-        _getReward(token);
-    }
+    function getReward(address token) external lock {
+      uint _reward = earned(token, msg.sender);
+      lastEarn[token][msg.sender] = block.timestamp;
+      if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
 
-    // allows a user to claim rewards for a given token
-    function _getReward(address token) internal lock {
-        uint _reward = earned(token, msg.sender);
-        lastEarn[token][msg.sender] = block.timestamp;
-        if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
+      uint _derivedBalance = derivedBalances[msg.sender];
+      derivedSupply -= _derivedBalance;
+      _derivedBalance = derivedBalance(msg.sender);
+      derivedBalances[msg.sender] = _derivedBalance;
+      derivedSupply += _derivedBalance;
 
-        uint _derivedBalance = derivedBalances[msg.sender];
-        derivedSupply -= _derivedBalance;
-        _derivedBalance = derivedBalance(msg.sender);
-        derivedBalances[msg.sender] = _derivedBalance;
-        derivedSupply += _derivedBalance;
-
-        _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
-        _writeSupplyCheckpoint();
+      _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
+      _writeSupplyCheckpoint();
     }
 
 
@@ -292,21 +286,21 @@ contract Gauge {
         uint _adjusted = 0;
         if (account == ve(_ve).ownerOf(_tokenId)) {
             _adjusted = ve(_ve).balanceOfNFT(_tokenId);
+            _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
         }
-        _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
         return Math.min(_derived + _adjusted, _balance);
     }
 
     function updateRewardPerToken(address token) public view returns (uint) {
-        uint _startTimestamp = lastReward[token];
+        uint _startTimestamp = lastUpdateTime[token];
+        uint reward = rewardPerTokenStored[token];
+
         if (supplyNumCheckpoints == 0) {
-            return 0;
+            return reward;
         }
 
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = supplyNumCheckpoints-1;
-
-        uint reward = rewardPerTokenStored[token];
         uint _rewardRate = rewardRate[token];
 
         if (_endIndex - _startIndex > 1) {
@@ -417,13 +411,10 @@ contract Gauge {
         _writeSupplyCheckpoint();
     }
 
-    // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
-    // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
-    function notifyRewardAmount(address token, uint amount) external lock returns (bool) {
+    function notifyRewardAmount(address token, uint amount) external lock {
         rewardPerTokenStored[token] = updateRewardPerToken(token);
-        lastUpdateTime[token] = lastTimeRewardApplicable(token);
-        lastReward[token] = block.timestamp;
-        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], block.timestamp);
+        lastUpdateTime[token] = block.timestamp;
+        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);
@@ -431,17 +422,11 @@ contract Gauge {
         } else {
             uint _remaining = periodFinish[token] - block.timestamp;
             uint _left = _remaining * rewardRate[token];
-            if (amount < _left) {
-              return false; // don't revert to help distribute run through its tokens
-            }
+            require(amount > _left);
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
-
-        lastUpdateTime[token] = block.timestamp;
         periodFinish[token] = block.timestamp + DURATION;
-
-        return true;
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
@@ -771,9 +756,7 @@ contract BaseV1Gauges {
         claimable[_gauge] = 0;
         erc20(base).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
         erc20(base).approve(_gauge, _claimable);
-        if (!Gauge(_gauge).notifyRewardAmount(base, _claimable)) { // can return false, will simply not distribute tokens
-            claimable[_gauge] = _claimable;
-        }
+        Gauge(_gauge).notifyRewardAmount(base, _claimable);
     }
 
     function distro() external {
