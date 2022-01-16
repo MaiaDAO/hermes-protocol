@@ -63,14 +63,13 @@ contract Gauge {
 
     /// @notice A checkpoint for marking balance from a given block
    struct Checkpoint {
-       uint fromBlock;
+       uint timestamp;
        uint balanceOf;
    }
 
    /// @notice A checkpoint for marking balance from a given block
   struct RewardCheckpoint {
-      uint fromBlock;
-      uint fromTimestamp;
+      uint timestamp;
       uint rewardRate;
   }
 
@@ -118,11 +117,11 @@ contract Gauge {
      * @notice Determine the prior balance for an account as of a block number
      * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
      * @param account The address of the account to check
-     * @param blockNumber The block number to get the vote balance at
+     * @param timestamp The timestamp to get the balance at
      * @return The balance the account had as of the given block
      */
-    function getPriorBalance(address account, uint blockNumber) public view returns (uint) {
-        require(blockNumber < block.number);
+    function getPriorBalance(address account, uint timestamp) public view returns (uint) {
+        require(timestamp < block.timestamp);
 
         uint nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
@@ -130,12 +129,12 @@ contract Gauge {
         }
 
         // First check most recent balance
-        if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
+        if (checkpoints[account][nCheckpoints - 1].timestamp <= timestamp) {
             return checkpoints[account][nCheckpoints - 1].balanceOf;
         }
 
         // Next check implicit zero balance
-        if (checkpoints[account][0].fromBlock > blockNumber) {
+        if (checkpoints[account][0].timestamp > timestamp) {
             return 0;
         }
 
@@ -144,9 +143,9 @@ contract Gauge {
         while (upper > lower) {
             uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
             Checkpoint memory cp = checkpoints[account][center];
-            if (cp.fromBlock == blockNumber) {
+            if (cp.timestamp == timestamp) {
                 return cp.balanceOf;
-            } else if (cp.fromBlock < blockNumber) {
+            } else if (cp.timestamp < timestamp) {
                 lower = center;
             } else {
                 upper = center - 1;
@@ -155,26 +154,26 @@ contract Gauge {
         return checkpoints[account][lower].balanceOf;
     }
 
-    function _writeCheckpoint(address account, uint newBalanceOf) internal {
-      uint _blockNumber = block.number;
+    function _writeCheckpoint(address account, uint balance) internal {
+      uint _timestamp = block.timestamp;
       uint _nCheckPoints = numCheckpoints[account];
 
-      if (_nCheckPoints > 0 && checkpoints[account][_nCheckPoints - 1].fromBlock == _blockNumber) {
-          checkpoints[account][_nCheckPoints - 1].balanceOf = newBalanceOf;
+      if (_nCheckPoints > 0 && checkpoints[account][_nCheckPoints - 1].timestamp == _timestamp) {
+          checkpoints[account][_nCheckPoints - 1].balanceOf = balance;
       } else {
-          checkpoints[account][_nCheckPoints] = Checkpoint(_blockNumber, newBalanceOf);
+          checkpoints[account][_nCheckPoints] = Checkpoint(_timestamp, balance);
           numCheckpoints[account] = _nCheckPoints + 1;
       }
     }
 
     function _writeRewardCheckpoint(address token, uint reward) internal {
-      uint _blockNumber = block.number;
+      uint _timestamp = block.timestamp;
       uint _nCheckPoints = rewardNumCheckpoints[token];
 
-      if (_nCheckPoints > 0 && rewardCheckpoints[token][_nCheckPoints - 1].fromBlock == _blockNumber) {
+      if (_nCheckPoints > 0 && rewardCheckpoints[token][_nCheckPoints - 1].timestamp == _timestamp) {
         rewardCheckpoints[token][_nCheckPoints - 1].rewardRate = reward;
       } else {
-          rewardCheckpoints[token][_nCheckPoints] = RewardCheckpoint(_blockNumber, block.timestamp, reward);
+          rewardCheckpoints[token][_nCheckPoints] = RewardCheckpoint(block.timestamp, reward);
           rewardNumCheckpoints[token] = _nCheckPoints + 1;
       }
     }
