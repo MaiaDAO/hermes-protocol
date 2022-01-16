@@ -263,8 +263,11 @@ contract Gauge {
 
     function earned(address token, address account) public view returns (uint) {
         uint _startTimestamp = lastEarn[token][account];
+        if (numCheckpoints[account] == 0) {
+            return 0;
+        }
         uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
-        uint _endIndex = numCheckpoints[account];
+        uint _endIndex = numCheckpoints[account]-1;
 
         uint reward = 0;
 
