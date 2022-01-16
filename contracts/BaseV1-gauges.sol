@@ -53,7 +53,7 @@ contract Gauge {
     mapping(address => uint) public lastUpdateTime;
     mapping(address => uint) public rewardPerTokenStored;
 
-    mapping(address => mapping(address => uint)) public lastClaim;
+    mapping(address => mapping(address => uint)) public lastEarn;
     mapping(address => mapping(address => uint)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint)) public rewards;
 
@@ -262,7 +262,7 @@ contract Gauge {
     }
 
     function earned(address token, address account) public view returns (uint) {
-        uint _startTimestamp = lastClaim[token][account];
+        uint _startTimestamp = lastEarn[token][account];
         uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
         uint _endIndex = numCheckpoints[account];
 
@@ -334,6 +334,7 @@ contract Gauge {
         if (account != address(0)) {
             rewards[token][account] = earned(token, account);
             userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
+            lastEarn[token][account] = lastUpdateTime[token];
         }
         _;
         if (account != address(0)) {
