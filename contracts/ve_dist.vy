@@ -287,38 +287,38 @@ def _claim(_tokenId: uint256, ve: address, _last_token_time: uint256) -> uint256
             week_cursor += WEEK
 
     user_epoch = min(max_user_epoch, user_epoch - 1)
-    self.user_epoch_of[addr] = user_epoch
-    self.time_cursor_of[addr] = week_cursor
+    self.user_epoch_of[_tokenId] = user_epoch
+    self.time_cursor_of[_tokenId] = week_cursor
 
-    log Claimed(addr, to_distribute, user_epoch, max_user_epoch)
+    log Claimed(_tokenId, to_distribute, user_epoch, max_user_epoch)
 
     return to_distribute
 
 @view
 @internal
-def _claimable(addr: address, ve: address, _last_token_time: uint256) -> uint256:
+def _claimable(_tokenId: uint256, ve: address, _last_token_time: uint256) -> uint256:
     # Minimal user_epoch is 0 (if user had no point)
     user_epoch: uint256 = 0
     to_distribute: uint256 = 0
 
-    max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(addr)
+    max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(_tokenId)
     _start_time: uint256 = self.start_time
 
     if max_user_epoch == 0:
         # No lock = no fees
         return 0
 
-    week_cursor: uint256 = self.time_cursor_of[addr]
+    week_cursor: uint256 = self.time_cursor_of[_tokenId]
     if week_cursor == 0:
         # Need to do the initial binary search
-        user_epoch = self._find_timestamp_user_epoch(ve, addr, _start_time, max_user_epoch)
+        user_epoch = self._find_timestamp_user_epoch(ve, _tokenId, _start_time, max_user_epoch)
     else:
-        user_epoch = self.user_epoch_of[addr]
+        user_epoch = self.user_epoch_of[_tokenId]
 
     if user_epoch == 0:
         user_epoch = 1
 
-    user_point: Point = VotingEscrow(ve).user_point_history(addr, user_epoch)
+    user_point: Point = VotingEscrow(ve).user_point_history(_tokenId, user_epoch)
 
     if week_cursor == 0:
         week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
@@ -341,7 +341,7 @@ def _claimable(addr: address, ve: address, _last_token_time: uint256) -> uint256
             if user_epoch > max_user_epoch:
                 user_point = empty(Point)
             else:
-                user_point = VotingEscrow(ve).user_point_history(addr, user_epoch)
+                user_point = VotingEscrow(ve).user_point_history(_tokenId, user_epoch)
 
         else:
             # Calc
@@ -359,31 +359,31 @@ def _claimable(addr: address, ve: address, _last_token_time: uint256) -> uint256
 
 @view
 @external
-def claimable(_addr: address = msg.sender) -> uint256:
+def claimable(_tokenId: uint256) -> uint256:
     """
-    @notice See claimable fees for `_addr`
-    @dev Each call to claim looks at a maximum of 50 user veCRV points.
-         For accounts with many veCRV related actions, this function
+    @notice See claimable fees for `_tokenId`
+    @dev Each call to claim looks at a maximum of 50 user ve points.
+         For accounts with many ve related actions, this function
          may need to be called more than once to claim all available
          fees. In the `Claimed` event that fires, if `claim_epoch` is
          less than `max_epoch`, the account may claim again.
-    @param _addr Address to claim fees for
+    @param _tokenId uint256 to claim fees for
     @return uint256 Amount of fees claimed in the call
     """
     last_token_time: uint256 = self.last_token_time / WEEK * WEEK
-    return self._claimable(_addr, self.voting_escrow, last_token_time)
+    return self._claimable(_tokenId, self.voting_escrow, last_token_time)
 
 @external
 @nonreentrant('lock')
-def claim(_addr: address = msg.sender) -> uint256:
+def claim(_tokenId: uint256) -> uint256:
     """
-    @notice Claim fees for `_addr`
-    @dev Each call to claim look at a maximum of 50 user veCRV points.
-         For accounts with many veCRV related actions, this function
+    @notice Claim fees for `_tokenId`
+    @dev Each call to claim look at a maximum of 50 user ve points.
+         For accounts with many ve related actions, this function
          may need to be called more than once to claim all available
          fees. In the `Claimed` event that fires, if `claim_epoch` is
          less than `max_epoch`, the account may claim again.
-    @param _addr Address to claim fees for
+    @param _tokenId uint256 to claim fees for
     @return uint256 Amount of fees claimed in the call
     """
     assert not self.is_killed
@@ -399,10 +399,10 @@ def claim(_addr: address = msg.sender) -> uint256:
 
     last_token_time = last_token_time / WEEK * WEEK
 
-    amount: uint256 = self._claim(_addr, self.voting_escrow, last_token_time)
+    amount: uint256 = self._claim(_tokenId, self.voting_escrow, last_token_time)
     if amount != 0:
         token: address = self.token
-        VotingEscrow(self.voting_escrow).deposit_for(_addr, amount)
+        VotingEscrow(self.voting_escrow).deposit_for(_tokenId, amount)
         self.token_last_balance -= amount
 
     return amount
@@ -410,12 +410,12 @@ def claim(_addr: address = msg.sender) -> uint256:
 
 @external
 @nonreentrant('lock')
-def claim_many(_receivers: address[20]) -> bool:
+def claim_many(_tokenIds: uint256[20]) -> bool:
     """
     @notice Make multiple fee claims in a single call
-    @dev Used to claim for many accounts at once, or to make
+    @dev Used to claim for many _tokenIds at once, or to make
          multiple claims for the same address when that address
-         has significant veCRV history
+         has significant ve history
     @param _receivers List of addresses to claim for. Claiming
                       terminates at the first `ZERO_ADDRESS`.
     @return bool success
@@ -436,13 +436,13 @@ def claim_many(_receivers: address[20]) -> bool:
     token: address = self.token
     total: uint256 = 0
 
-    for addr in _receivers:
-        if addr == ZERO_ADDRESS:
+    for _tokenId in _tokenIds:
+        if _tokenId == 0:
             break
 
-        amount: uint256 = self._claim(addr, voting_escrow, last_token_time)
+        amount: uint256 = self._claim(_tokenId, voting_escrow, last_token_time)
         if amount != 0:
-            assert ERC20(token).transfer(addr, amount)
+            VotingEscrow(self.voting_escrow).deposit_for(_tokenId, amount)
             total += amount
 
     if total != 0:
@@ -452,18 +452,17 @@ def claim_many(_receivers: address[20]) -> bool:
 
 
 @external
-def burn(_coin: address) -> bool:
+def burn() -> bool:
     """
-    @notice Receive 3CRV into the contract and trigger a token checkpoint
+    @notice Receive reward into the contract and trigger a token checkpoint
     @param _coin Address of the coin being received (must be 3CRV)
     @return bool success
     """
-    assert _coin == self.token
     assert not self.is_killed
 
-    amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
+    amount: uint256 = ERC20(self.token).balanceOf(msg.sender)
     if amount != 0:
-        ERC20(_coin).transferFrom(msg.sender, self, amount)
+        ERC20(self.token).transferFrom(msg.sender, self, amount)
         if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
             self._checkpoint_token()
 

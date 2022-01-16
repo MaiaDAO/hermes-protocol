@@ -56,16 +56,22 @@ contract Gauge {
     mapping(address => mapping(address => uint)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint)) public rewards;
 
-    mapping(address => mapping(address => uint)) public enrolled;
-    mapping(address => uint) public updated;
-
     mapping(address => uint) public tokenIds;
-
-    mapping(address => address[]) public tokensFor;
-    mapping(address => mapping(address => bool)) public tokensForExist;
 
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
+
+    /// @notice A checkpoint for marking balance from a given block
+   struct Checkpoint {
+       uint fromBlock;
+       uint balanceOf;
+   }
+
+   /// @notice A record of balance checkpoints for each account, by index
+   mapping (address => mapping (uint => Checkpoint)) public checkpoints;
+
+   /// @notice The number of checkpoints for each account
+   mapping (address => uint32) public numCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -83,6 +89,69 @@ contract Gauge {
         address _token = ve(__ve).token();
         incentives.push(_token); // assume the first incentive is the same token that creates ve
         isIncentive[_token] = true;
+    }
+
+    /**
+     * @notice Gets the current balance for `account`
+     * @param account The address to get balance
+     * @return The balance for `account`
+     */
+    function getCurrentBalance(address account) external view returns (uint) {
+        uint32 nCheckpoints = numCheckpoints[account];
+        return nCheckpoints > 0 ? checkpoints[account][nCheckpoints - 1].balanceOf : 0;
+    }
+
+    /**
+     * @notice Determine the prior balance for an account as of a block number
+     * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
+     * @param account The address of the account to check
+     * @param blockNumber The block number to get the vote balance at
+     * @return The balance the account had as of the given block
+     */
+    function getPriorBalance(address account, uint blockNumber) public view returns (uint) {
+        require(blockNumber < block.number);
+
+        uint32 nCheckpoints = numCheckpoints[account];
+        if (nCheckpoints == 0) {
+            return 0;
+        }
+
+        // First check most recent balance
+        if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
+            return checkpoints[account][nCheckpoints - 1].votes;
+        }
+
+        // Next check implicit zero balance
+        if (checkpoints[account][0].fromBlock > blockNumber) {
+            return 0;
+        }
+
+        uint32 lower = 0;
+        uint32 upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            Checkpoint memory cp = checkpoints[account][center];
+            if (cp.fromBlock == blockNumber) {
+                return cp.balanceOf;
+            } else if (cp.fromBlock < blockNumber) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return checkpoints[account][lower].balanceOf;
+    }
+
+    function _writeCheckpoint(address account, uint newBalanceOf) internal {
+      uint _blockNumber = block.number;
+      uint _nCheckPoints = numCheckPoints[account];
+
+      if (_nCheckPoints > 0 && checkpoints[account][_nCheckPoints - 1].fromBlock == _blockNumber) {
+          checkpoints[account][_nCheckPoints - 1].balanceOf = newBalanceOf;
+      } else {
+          checkpoints[account][_nCheckPoints] = Checkpoint(_blockNumber, newBalanceOf);
+          numCheckpoints[account] = _nCheckPoints + 1;
+      }
     }
 
     function incentivesLength() external view returns (uint) {
@@ -165,6 +234,7 @@ contract Gauge {
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
+        _moveDelegates(delegates[src], delegates[dst], amount);
     }
 
     function withdraw() external {
