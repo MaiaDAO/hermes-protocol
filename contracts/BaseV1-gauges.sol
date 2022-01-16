@@ -44,9 +44,6 @@ contract Gauge {
     uint constant DURATION = 7 days; // rewards are released over 7 days
     uint constant PRECISION = 10 ** 18;
 
-    address[] public incentives; // array of incentives for a given gauge/bribe
-    mapping(address => bool) public isIncentive; // confirms if the incentive is currently valid for the gauge/bribe
-
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
     mapping(address => uint) public periodFinish;
@@ -54,7 +51,6 @@ contract Gauge {
     mapping(address => uint) public rewardPerTokenStored;
 
     mapping(address => mapping(address => uint)) public lastEarn;
-    mapping(address => uint) public lastAccrual;
     mapping(address => uint) public lastReward;
 
     mapping(address => uint) public tokenIds;
@@ -67,12 +63,6 @@ contract Gauge {
        uint timestamp;
        uint balanceOf;
    }
-
-   /// @notice A checkpoint for marking reward rate
-  struct RewardCheckpoint {
-      uint timestamp;
-      uint rewardRate;
-  }
 
   /// @notice A checkpoint for marking reward rate
  struct RewardPerTokenCheckpoint {
@@ -91,12 +81,6 @@ contract Gauge {
 
    /// @notice The number of checkpoints for each account
    mapping (address => uint) public numCheckpoints;
-
-   /// @notice A record of balance checkpoints for each token, by index
-   mapping (address => mapping (uint => RewardCheckpoint)) public rewardCheckpoints;
-
-   /// @notice The number of checkpoints for each token
-   mapping (address => uint) public rewardNumCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
    mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
@@ -123,19 +107,6 @@ contract Gauge {
         stake = _stake;
         address __ve = BaseV1Gauges(msg.sender)._ve();
         _ve = __ve;
-        address _token = ve(__ve).token();
-        incentives.push(_token); // assume the first incentive is the same token that creates ve
-        isIncentive[_token] = true;
-    }
-
-    /**
-     * @notice Gets the current balance for `account`
-     * @param account The address to get balance
-     * @return The balance for `account`
-     */
-    function getCurrentBalance(address account) external view returns (uint) {
-        uint nCheckpoints = numCheckpoints[account];
-        return nCheckpoints > 0 ? checkpoints[account][nCheckpoints - 1].balanceOf : 0;
     }
 
     /**
@@ -166,38 +137,6 @@ contract Gauge {
         while (upper > lower) {
             uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
             Checkpoint memory cp = checkpoints[account][center];
-            if (cp.timestamp == timestamp) {
-                return center;
-            } else if (cp.timestamp < timestamp) {
-                lower = center;
-            } else {
-                upper = center - 1;
-            }
-        }
-        return lower;
-    }
-
-    function getPriorRewardIndex(address token, uint timestamp) public view returns (uint) {
-        uint nCheckpoints = rewardNumCheckpoints[token];
-        if (nCheckpoints == 0) {
-            return 0;
-        }
-
-        // First check most recent balance
-        if (rewardCheckpoints[token][nCheckpoints - 1].timestamp <= timestamp) {
-            return (nCheckpoints - 1);
-        }
-
-        // Next check implicit zero balance
-        if (rewardCheckpoints[token][0].timestamp > timestamp) {
-            return 0;
-        }
-
-        uint lower = 0;
-        uint upper = nCheckpoints - 1;
-        while (upper > lower) {
-            uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
-            RewardCheckpoint memory cp = rewardCheckpoints[token][center];
             if (cp.timestamp == timestamp) {
                 return center;
             } else if (cp.timestamp < timestamp) {
@@ -249,7 +188,7 @@ contract Gauge {
 
         // First check most recent balance
         if (rewardPerTokenCheckpoints[token][nCheckpoints - 1].timestamp <= timestamp) {
-            return (rewardPerTokenCheckpoints[token][nCheckpoints - 1].rewardPerToken, rewardCheckpoints[token][nCheckpoints - 1].timestamp);
+            return (rewardPerTokenCheckpoints[token][nCheckpoints - 1].rewardPerToken, rewardPerTokenCheckpoints[token][nCheckpoints - 1].timestamp);
         }
 
         // Next check implicit zero balance
@@ -285,17 +224,6 @@ contract Gauge {
       }
     }
 
-    function _writeRewardCheckpoint(address token, uint reward, uint timestamp) internal {
-      uint _nCheckPoints = rewardNumCheckpoints[token];
-
-      if (_nCheckPoints > 0 && rewardCheckpoints[token][_nCheckPoints - 1].timestamp == timestamp) {
-        rewardCheckpoints[token][_nCheckPoints - 1].rewardRate = reward;
-      } else {
-          rewardCheckpoints[token][_nCheckPoints] = RewardCheckpoint(timestamp, reward);
-          rewardNumCheckpoints[token] = _nCheckPoints + 1;
-      }
-    }
-
     function _writeRewardPerTokenCheckpoint(address token, uint reward, uint timestamp) internal {
       uint _nCheckPoints = rewardPerTokenNumCheckpoints[token];
 
@@ -317,10 +245,6 @@ contract Gauge {
           supplyCheckpoints[_nCheckPoints] = SupplyCheckpoint(_timestamp, derivedSupply);
           supplyNumCheckpoints = _nCheckPoints + 1;
       }
-    }
-
-    function incentivesLength() external view returns (uint) {
-        return incentives.length;
     }
 
     // returns the last time the reward was modified or periodFinish if the reward has ended
@@ -375,7 +299,7 @@ contract Gauge {
 
     function updateRewardPerToken(address token) public view returns (uint) {
         uint _startTimestamp = lastReward[token];
-        if (supplyNumCheckpoints == 0 || rewardNumCheckpoints[token] == 0) {
+        if (supplyNumCheckpoints == 0) {
             return 0;
         }
 
@@ -383,7 +307,7 @@ contract Gauge {
         uint _endIndex = supplyNumCheckpoints-1;
 
         uint reward = rewardPerTokenStored[token];
-        RewardCheckpoint memory rc = rewardCheckpoints[token][rewardNumCheckpoints[token]-1];
+        uint _rewardRate = rewardRate[token];
 
         if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
@@ -392,8 +316,8 @@ contract Gauge {
                     sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
                 }
                 SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
-                if (rc.rewardRate > 0 && sp0.supply > 0) {
-                  reward += ((sp1.timestamp - sp0.timestamp) * rc.rewardRate * PRECISION / sp0.supply);
+                if (_rewardRate > 0 && sp0.supply > 0) {
+                  reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
                 }
             }
         }
@@ -402,8 +326,8 @@ contract Gauge {
         if (_endIndex == _startIndex) {
             sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
         }
-        if (rc.rewardRate > 0 && sp.supply > 0) {
-            reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * rc.rewardRate * PRECISION / sp.supply);
+        if (_rewardRate > 0 && sp.supply > 0) {
+            reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * _rewardRate * PRECISION / sp.supply);
         }
 
         return reward;
@@ -493,11 +417,6 @@ contract Gauge {
         _writeSupplyCheckpoint();
     }
 
-    function exit() external {
-        if (balanceOf[msg.sender] > 0) _withdraw(balanceOf[msg.sender]); // include balance 0 check for tokens that might revert on 0 balance (assuming withdraw > exit)
-        _getReward(incentives[0]);
-    }
-
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
     function notifyRewardAmount(address token, uint amount) external lock returns (bool) {
@@ -518,16 +437,10 @@ contract Gauge {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
-        _writeRewardCheckpoint(token, rewardRate[token], block.timestamp);
 
         lastUpdateTime[token] = block.timestamp;
         periodFinish[token] = block.timestamp + DURATION;
 
-        // if it is a new incentive, add it to the stack
-        if (isIncentive[token] == false) {
-            isIncentive[token] = true;
-            incentives.push(token);
-        }
         return true;
     }
 
