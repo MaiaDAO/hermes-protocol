@@ -54,25 +54,37 @@ contract Gauge {
     mapping(address => uint) public rewardPerTokenStored;
 
     mapping(address => mapping(address => uint)) public lastEarn;
-    mapping(address => mapping(address => uint)) public userRewardPerTokenPaid;
-    mapping(address => mapping(address => uint)) public rewards;
+    mapping(address => uint) public lastAccrual;
+    mapping(address => uint) public lastReward;
 
     mapping(address => uint) public tokenIds;
 
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
 
-    /// @notice A checkpoint for marking balance from a given block
+    /// @notice A checkpoint for marking balance
    struct Checkpoint {
        uint timestamp;
        uint balanceOf;
    }
 
-   /// @notice A checkpoint for marking balance from a given block
+   /// @notice A checkpoint for marking reward rate
   struct RewardCheckpoint {
       uint timestamp;
       uint rewardRate;
   }
+
+  /// @notice A checkpoint for marking reward rate
+ struct RewardPerTokenCheckpoint {
+     uint timestamp;
+     uint rewardPerToken;
+ }
+
+  /// @notice A checkpoint for marking supply
+ struct SupplyCheckpoint {
+     uint timestamp;
+     uint supply;
+ }
 
    /// @notice A record of balance checkpoints for each account, by index
    mapping (address => mapping (uint => Checkpoint)) public checkpoints;
@@ -85,6 +97,18 @@ contract Gauge {
 
    /// @notice The number of checkpoints for each token
    mapping (address => uint) public rewardNumCheckpoints;
+
+   /// @notice A record of balance checkpoints for each token, by index
+   mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
+
+   /// @notice The number of checkpoints
+   uint public supplyNumCheckpoints;
+
+   /// @notice A record of balance checkpoints for each token, by index
+   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
+
+   /// @notice The number of checkpoints for each token
+   mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -153,20 +177,20 @@ contract Gauge {
         return lower;
     }
 
-    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
+    function getPriorRewardIndex(address token, uint timestamp) public view returns (uint) {
         uint nCheckpoints = rewardNumCheckpoints[token];
         if (nCheckpoints == 0) {
-            return (0,0);
+            return 0;
         }
 
         // First check most recent balance
         if (rewardCheckpoints[token][nCheckpoints - 1].timestamp <= timestamp) {
-            return (rewardCheckpoints[token][nCheckpoints - 1].rewardRate, rewardCheckpoints[token][nCheckpoints - 1].timestamp);
+            return (nCheckpoints - 1);
         }
 
         // Next check implicit zero balance
         if (rewardCheckpoints[token][0].timestamp > timestamp) {
-            return (0,0);
+            return 0;
         }
 
         uint lower = 0;
@@ -175,14 +199,78 @@ contract Gauge {
             uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
             RewardCheckpoint memory cp = rewardCheckpoints[token][center];
             if (cp.timestamp == timestamp) {
-                return (cp.rewardRate, cp.timestamp);
+                return center;
             } else if (cp.timestamp < timestamp) {
                 lower = center;
             } else {
                 upper = center - 1;
             }
         }
-        return (rewardCheckpoints[token][lower].rewardRate, rewardCheckpoints[token][lower].timestamp);
+        return lower;
+    }
+
+    function getPriorSupplyIndex(uint timestamp) public view returns (uint) {
+        uint nCheckpoints = supplyNumCheckpoints;
+        if (nCheckpoints == 0) {
+            return 0;
+        }
+
+        // First check most recent balance
+        if (supplyCheckpoints[nCheckpoints - 1].timestamp <= timestamp) {
+            return (nCheckpoints - 1);
+        }
+
+        // Next check implicit zero balance
+        if (supplyCheckpoints[0].timestamp > timestamp) {
+            return 0;
+        }
+
+        uint lower = 0;
+        uint upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            SupplyCheckpoint memory cp = supplyCheckpoints[center];
+            if (cp.timestamp == timestamp) {
+                return center;
+            } else if (cp.timestamp < timestamp) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return lower;
+    }
+
+    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
+        uint nCheckpoints = rewardPerTokenNumCheckpoints[token];
+        if (nCheckpoints == 0) {
+            return (0,0);
+        }
+
+        // First check most recent balance
+        if (rewardPerTokenCheckpoints[token][nCheckpoints - 1].timestamp <= timestamp) {
+            return (rewardPerTokenCheckpoints[token][nCheckpoints - 1].rewardPerToken, rewardCheckpoints[token][nCheckpoints - 1].timestamp);
+        }
+
+        // Next check implicit zero balance
+        if (rewardPerTokenCheckpoints[token][0].timestamp > timestamp) {
+            return (0,0);
+        }
+
+        uint lower = 0;
+        uint upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            RewardPerTokenCheckpoint memory cp = rewardPerTokenCheckpoints[token][center];
+            if (cp.timestamp == timestamp) {
+                return (cp.rewardPerToken, cp.timestamp);
+            } else if (cp.timestamp < timestamp) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return (rewardPerTokenCheckpoints[token][lower].rewardPerToken, rewardPerTokenCheckpoints[token][lower].timestamp);
     }
 
     function _writeCheckpoint(address account, uint balance) internal {
@@ -208,6 +296,29 @@ contract Gauge {
       }
     }
 
+    function _writeRewardPerTokenCheckpoint(address token, uint reward, uint timestamp) internal {
+      uint _nCheckPoints = rewardPerTokenNumCheckpoints[token];
+
+      if (_nCheckPoints > 0 && rewardPerTokenCheckpoints[token][_nCheckPoints - 1].timestamp == timestamp) {
+        rewardPerTokenCheckpoints[token][_nCheckPoints - 1].rewardPerToken = reward;
+      } else {
+          rewardPerTokenCheckpoints[token][_nCheckPoints] = RewardPerTokenCheckpoint(timestamp, reward);
+          rewardPerTokenNumCheckpoints[token] = _nCheckPoints + 1;
+      }
+    }
+
+    function _writeSupplyCheckpoint() internal {
+      uint _nCheckPoints = supplyNumCheckpoints;
+      uint _timestamp = block.timestamp;
+
+      if (_nCheckPoints > 0 && supplyCheckpoints[_nCheckPoints - 1].timestamp == _timestamp) {
+        supplyCheckpoints[_nCheckPoints - 1].supply = derivedSupply;
+      } else {
+          supplyCheckpoints[_nCheckPoints] = SupplyCheckpoint(_timestamp, derivedSupply);
+          supplyNumCheckpoints = _nCheckPoints + 1;
+      }
+    }
+
     function incentivesLength() external view returns (uint) {
         return incentives.length;
     }
@@ -227,26 +338,27 @@ contract Gauge {
     }
 
     // allows a user to claim rewards for a given token
-    function _getReward(address token) internal lock updateReward(token, msg.sender) {
-        uint _reward = rewards[token][msg.sender];
-        rewards[token][msg.sender] = 0;
+    function _getReward(address token) internal lock {
+        uint _reward = earned(token, msg.sender);
+        lastEarn[token][msg.sender] = block.timestamp;
         if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
+
+        uint _derivedBalance = derivedBalances[msg.sender];
+        derivedSupply -= _derivedBalance;
+        _derivedBalance = derivedBalance(msg.sender);
+        derivedBalances[msg.sender] = _derivedBalance;
+        derivedSupply += _derivedBalance;
+
+        _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
+        _writeSupplyCheckpoint();
     }
+
 
     function rewardPerToken(address token) public view returns (uint) {
         if (totalSupply == 0) {
             return rewardPerTokenStored[token];
-        } // derivedSupply is used instead of totalSupply to modify for ve-BOOST
+        }
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / derivedSupply);
-    }
-
-    // used to update an account internally and externally, since ve decays over times, an address could have 0 balance but still register here
-    function kick(address account) public {
-        uint _derivedBalance = derivedBalances[account];
-        derivedSupply -= _derivedBalance;
-        _derivedBalance = derivedBalance(account);
-        derivedBalances[account] = _derivedBalance;
-        derivedSupply += _derivedBalance;
     }
 
     function derivedBalance(address account) public view returns (uint) {
@@ -259,6 +371,42 @@ contract Gauge {
         }
         _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
         return Math.min(_derived + _adjusted, _balance);
+    }
+
+    function updateRewardPerToken(address token) public view returns (uint) {
+        uint _startTimestamp = lastReward[token];
+        if (supplyNumCheckpoints == 0 || rewardNumCheckpoints[token] == 0) {
+            return 0;
+        }
+
+        uint _startIndex = getPriorSupplyIndex(_startTimestamp);
+        uint _endIndex = supplyNumCheckpoints-1;
+
+        uint reward = rewardPerTokenStored[token];
+        RewardCheckpoint memory rc = rewardCheckpoints[token][rewardNumCheckpoints[token]-1];
+
+        if (_endIndex - _startIndex > 1) {
+            for (uint i = _startIndex; i < _endIndex-1; i++) {
+                SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
+                if (i == _startIndex) {
+                    sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
+                }
+                SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
+                if (rc.rewardRate > 0 && sp0.supply > 0) {
+                  reward += ((sp1.timestamp - sp0.timestamp) * rc.rewardRate * PRECISION / sp0.supply);
+                }
+            }
+        }
+
+        SupplyCheckpoint memory sp = supplyCheckpoints[_endIndex];
+        if (_endIndex == _startIndex) {
+            sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
+        }
+        if (rc.rewardRate > 0 && sp.supply > 0) {
+            reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * rc.rewardRate * PRECISION / sp.supply);
+        }
+
+        return reward;
     }
 
     function earned(address token, address account) public view returns (uint) {
@@ -290,7 +438,7 @@ contract Gauge {
             reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
         }
 
-        return reward + rewards[token][account];
+        return reward;
     }
 
     function deposit(uint tokenId) external {
@@ -305,12 +453,20 @@ contract Gauge {
         _deposit(amount, tokenId);
     }
 
-    function _deposit(uint amount, uint tokenId) internal lock updateReward(incentives[0], msg.sender) {
+    function _deposit(uint amount, uint tokenId) internal lock {
         tokenIds[msg.sender] = tokenId;
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
-        _writeCheckpoint(msg.sender, derivedBalance(msg.sender));
+
+        uint _derivedBalance = derivedBalances[msg.sender];
+        derivedSupply -= _derivedBalance;
+        _derivedBalance = derivedBalance(msg.sender);
+        derivedBalances[msg.sender] = _derivedBalance;
+        derivedSupply += _derivedBalance;
+
+        _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
+        _writeSupplyCheckpoint();
     }
 
     function withdraw() external {
@@ -321,12 +477,20 @@ contract Gauge {
         _withdraw(amount);
     }
 
-    function _withdraw(uint amount) internal lock updateReward(incentives[0], msg.sender) {
+    function _withdraw(uint amount) internal lock {
         tokenIds[msg.sender] = 0;
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
-        _writeCheckpoint(msg.sender, derivedBalance(msg.sender));
+
+        uint _derivedBalance = derivedBalances[msg.sender];
+        derivedSupply -= _derivedBalance;
+        _derivedBalance = derivedBalance(msg.sender);
+        derivedBalances[msg.sender] = _derivedBalance;
+        derivedSupply += _derivedBalance;
+
+        _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
+        _writeSupplyCheckpoint();
     }
 
     function exit() external {
@@ -334,24 +498,14 @@ contract Gauge {
         _getReward(incentives[0]);
     }
 
-    modifier updateReward(address token, address account) {
-        rewardPerTokenStored[token] = rewardPerToken(token);
-        lastUpdateTime[token] = lastTimeRewardApplicable(token);
-        _writeRewardCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
-        if (account != address(0)) {
-            rewards[token][account] = earned(token, account);
-            userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
-            lastEarn[token][account] = lastUpdateTime[token];
-        }
-        _;
-        if (account != address(0)) {
-            kick(account);
-        }
-    }
-
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
-    function notifyRewardAmount(address token, uint amount) external lock updateReward(token, address(0)) returns (bool) {
+    function notifyRewardAmount(address token, uint amount) external lock returns (bool) {
+        rewardPerTokenStored[token] = updateRewardPerToken(token);
+        lastUpdateTime[token] = lastTimeRewardApplicable(token);
+        lastReward[token] = block.timestamp;
+        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], block.timestamp);
+
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = amount / DURATION;
@@ -364,6 +518,7 @@ contract Gauge {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
+        _writeRewardCheckpoint(token, rewardRate[token], block.timestamp);
 
         lastUpdateTime[token] = block.timestamp;
         periodFinish[token] = block.timestamp + DURATION;
