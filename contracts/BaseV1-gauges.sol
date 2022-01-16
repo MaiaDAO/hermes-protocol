@@ -266,25 +266,29 @@ contract Gauge {
         if (numCheckpoints[account] == 0) {
             return 0;
         }
+
         uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
         uint _endIndex = numCheckpoints[account]-1;
 
         uint reward = 0;
 
-        if (_endIndex - _startIndex > 2) {
+        if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
                 Checkpoint memory cp0 = checkpoints[account][i];
                 Checkpoint memory cp1 = checkpoints[account][i+1];
                 (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
                 (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
-                reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+                if (_rewardPerTokenStored0 > 0) {
+                  reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+                }
             }
         }
 
         Checkpoint memory cp = checkpoints[account][_endIndex];
         (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
-        reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
-
+        if (_rewardPerTokenStored > 0) {
+            reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
+        }
 
         return reward + rewards[token][account];
     }
