@@ -12,15 +12,11 @@ contract ve {
         owner = msg.sender;
     }
 
-    function get_adjusted_ve_balance(uint tokenId, address gauge) external view returns (uint) {
-        return 100e18;
-    }
-
     function ownerOf(uint tokenId) external view returns (address) {
         return owner;
     }
 
-    function balanceOfNFT(uint tokenId, uint timestamp) external view returns (uint) {
+    function balanceOfNFT(uint tokenId) external view returns (uint) {
         return 100e18;
     }
 

@@ -21,7 +21,7 @@ interface erc20 {
 
 interface ve {
     function token() external view returns (address);
-    function get_adjusted_ve_balance(uint, address) external view returns (uint);
+    function balanceOfNFT(uint) external view returns (uint);
     function isApprovedOrOwner(address, uint) external view returns (bool);
     function ownerOf(uint) external view returns (address);
     function transferFrom(address, address, uint) external;
@@ -53,6 +53,7 @@ contract Gauge {
     mapping(address => uint) public lastUpdateTime;
     mapping(address => uint) public rewardPerTokenStored;
 
+    mapping(address => mapping(address => uint)) public lastClaim;
     mapping(address => mapping(address => uint)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint)) public rewards;
 
@@ -120,9 +121,7 @@ contract Gauge {
      * @param timestamp The timestamp to get the balance at
      * @return The balance the account had as of the given block
      */
-    function getPriorBalance(address account, uint timestamp) public view returns (uint) {
-        require(timestamp < block.timestamp);
-
+    function getPriorBalanceIndex(address account, uint timestamp) public view returns (uint) {
         uint nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
             return 0;
@@ -130,7 +129,7 @@ contract Gauge {
 
         // First check most recent balance
         if (checkpoints[account][nCheckpoints - 1].timestamp <= timestamp) {
-            return checkpoints[account][nCheckpoints - 1].balanceOf;
+            return (nCheckpoints - 1);
         }
 
         // Next check implicit zero balance
@@ -144,14 +143,46 @@ contract Gauge {
             uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
             Checkpoint memory cp = checkpoints[account][center];
             if (cp.timestamp == timestamp) {
-                return cp.balanceOf;
+                return center;
             } else if (cp.timestamp < timestamp) {
                 lower = center;
             } else {
                 upper = center - 1;
             }
         }
-        return checkpoints[account][lower].balanceOf;
+        return lower;
+    }
+
+    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
+        uint nCheckpoints = rewardNumCheckpoints[token];
+        if (nCheckpoints == 0) {
+            return (0,0);
+        }
+
+        // First check most recent balance
+        if (rewardCheckpoints[token][nCheckpoints - 1].timestamp <= timestamp) {
+            return (rewardCheckpoints[token][nCheckpoints - 1].rewardRate, rewardCheckpoints[token][nCheckpoints - 1].timestamp);
+        }
+
+        // Next check implicit zero balance
+        if (rewardCheckpoints[token][0].timestamp > timestamp) {
+            return (0,0);
+        }
+
+        uint lower = 0;
+        uint upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            RewardCheckpoint memory cp = rewardCheckpoints[token][center];
+            if (cp.timestamp == timestamp) {
+                return (cp.rewardRate, cp.timestamp);
+            } else if (cp.timestamp < timestamp) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return (rewardCheckpoints[token][lower].rewardRate, rewardCheckpoints[token][lower].timestamp);
     }
 
     function _writeCheckpoint(address account, uint balance) internal {
@@ -166,14 +197,13 @@ contract Gauge {
       }
     }
 
-    function _writeRewardCheckpoint(address token, uint reward) internal {
-      uint _timestamp = block.timestamp;
+    function _writeRewardCheckpoint(address token, uint reward, uint timestamp) internal {
       uint _nCheckPoints = rewardNumCheckpoints[token];
 
-      if (_nCheckPoints > 0 && rewardCheckpoints[token][_nCheckPoints - 1].timestamp == _timestamp) {
+      if (_nCheckPoints > 0 && rewardCheckpoints[token][_nCheckPoints - 1].timestamp == timestamp) {
         rewardCheckpoints[token][_nCheckPoints - 1].rewardRate = reward;
       } else {
-          rewardCheckpoints[token][_nCheckPoints] = RewardCheckpoint(block.timestamp, reward);
+          rewardCheckpoints[token][_nCheckPoints] = RewardCheckpoint(timestamp, reward);
           rewardNumCheckpoints[token] = _nCheckPoints + 1;
       }
     }
@@ -225,15 +255,35 @@ contract Gauge {
         uint _derived = _balance * 40 / 100;
         uint _adjusted = 0;
         if (account == ve(_ve).ownerOf(_tokenId)) {
-            _adjusted = ve(_ve).get_adjusted_ve_balance(_tokenId, address(this));
+            _adjusted = ve(_ve).balanceOfNFT(_tokenId);
         }
         _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
         return Math.min(_derived + _adjusted, _balance);
     }
 
     function earned(address token, address account) public view returns (uint) {
-        uint _balance = derivedBalances[account];
-        return (_balance * (rewardPerToken(token) - userRewardPerTokenPaid[token][account]) / PRECISION) + rewards[token][account];
+        uint _startTimestamp = lastClaim[token][account];
+        uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
+        uint _endIndex = numCheckpoints[account];
+
+        uint reward = 0;
+
+        if (_endIndex - _startIndex > 2) {
+            for (uint i = _startIndex; i < _endIndex-1; i++) {
+                Checkpoint memory cp0 = checkpoints[account][i];
+                Checkpoint memory cp1 = checkpoints[account][i+1];
+                (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
+                (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
+                reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+            }
+        }
+
+        Checkpoint memory cp = checkpoints[account][_endIndex];
+        (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
+        reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
+
+
+        return reward + rewards[token][account];
     }
 
     function deposit(uint tokenId) external {
@@ -253,7 +303,7 @@ contract Gauge {
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
-        _writeCheckpoint(msg.sender, balanceOf[msg.sender]);
+        _writeCheckpoint(msg.sender, derivedBalance(msg.sender));
     }
 
     function withdraw() external {
@@ -269,7 +319,7 @@ contract Gauge {
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
-        _writeCheckpoint(msg.sender, balanceOf[msg.sender]);
+        _writeCheckpoint(msg.sender, derivedBalance(msg.sender));
     }
 
     function exit() external {
@@ -280,6 +330,7 @@ contract Gauge {
     modifier updateReward(address token, address account) {
         rewardPerTokenStored[token] = rewardPerToken(token);
         lastUpdateTime[token] = lastTimeRewardApplicable(token);
+        _writeRewardCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
         if (account != address(0)) {
             rewards[token][account] = earned(token, account);
             userRewardPerTokenPaid[token][account] = rewardPerTokenStored[token];
@@ -305,7 +356,6 @@ contract Gauge {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
-        _writeRewardCheckpoint(token, rewardRate[token]);
 
         lastUpdateTime[token] = block.timestamp;
         periodFinish[token] = block.timestamp + DURATION;
@@ -542,7 +592,7 @@ contract BaseV1Gauges {
         uint[] memory _weights = new uint[](_poolCnt);
 
         uint _prevUsedWeight = usedWeights[_tokenId];
-        uint _weight = ve(_ve).get_adjusted_ve_balance(_tokenId, address(0));
+        uint _weight = ve(_ve).balanceOfNFT(_tokenId);
 
         for (uint i = 0; i < _poolCnt; i ++) {
             uint _prevWeight = votes[_tokenId][_poolVote[i]];
@@ -556,7 +606,7 @@ contract BaseV1Gauges {
         require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
         _reset(_tokenId);
         uint _poolCnt = _poolVote.length;
-        uint _weight = ve(_ve).get_adjusted_ve_balance(_tokenId, address(0));
+        uint _weight = ve(_ve).balanceOfNFT(_tokenId);
         uint _totalVoteWeight = 0;
         uint _usedWeight = 0;
 
