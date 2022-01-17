@@ -176,7 +176,7 @@ describe("BaseV1Factory", function () {
   });
 
   it("withdraw gauge stake", async function () {
-    await gauge.exit();
+    await gauge.withdraw_test();
     expect(await gauge.totalSupply()).to.equal(0);
   });
 
@@ -197,7 +197,7 @@ describe("BaseV1Factory", function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit_test(pair_1000, owner.address);
-    await gauge.exit();
+    await gauge.withdraw_test();
     expect(await gauge.totalSupply()).to.equal(0);
   });
 
@@ -215,15 +215,18 @@ describe("BaseV1Factory", function () {
     expect(await bribe.balanceOf(1)).to.not.equal(0);
   });
 
-  it("minter mint", async function () {
-    await minter.update_period();
-  });
-
   it("gauge distribute based on voting", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
+    await ve_underlying.approve(gauge_factory.address, pair_1000);
+    console.log(await gauge_factory.index());
+    await gauge_factory.notifyRewardAmount(pair_1000);
+    console.log(await gauge_factory.index());
+    await gauge_factory.updateAll();
     await gauge_factory.distro();
-    await ve_underlying.transfer(gauge_factory.address, pair_1000);
-    await gauge_factory.distro();
+  });
+
+  it("minter mint", async function () {
+    await minter.update_period();
   });
 
   it("bribe claim rewards", async function () {

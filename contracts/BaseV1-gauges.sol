@@ -389,6 +389,10 @@ contract Gauge {
         _writeSupplyCheckpoint();
     }
 
+    function withdraw_test() external {
+        _withdraw(balanceOf[msg.sender]);
+    }
+
     function withdraw() external {
         _withdraw(balanceOf[msg.sender]);
     }
@@ -942,6 +946,22 @@ contract BaseV1Gauges {
         }
     }
 
+    function updateFor(address[] memory _gauges) external {
+        for (uint i = 0; i < _gauges.length; i++) {
+            _updateFor(_gauges[i]);
+        }
+    }
+
+    function updateFor(uint start, uint end) public {
+        for (uint i = start; i < end; i++) {
+            _updateFor(gauges[_pools[i]]);
+        }
+    }
+
+    function updateAll() public {
+        updateFor(0, _pools.length);
+    }
+
     function updateFor(address _gauge) external {
         _updateFor(_gauge);
     }
@@ -965,6 +985,7 @@ contract BaseV1Gauges {
 
 
     function distribute(address _gauge) public lock {
+        _updateFor(_gauge);
         uint _claimable = claimable[_gauge];
         claimable[_gauge] = 0;
         erc20(base).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
