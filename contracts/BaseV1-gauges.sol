@@ -676,7 +676,7 @@ contract Bribe {
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / totalSupply);
     }
 
-    function updateRewardPerToken(address token) public view returns (uint) {
+    function updateRewardPerToken(address token) public returns (uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
@@ -697,7 +697,9 @@ contract Bribe {
                 SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
                 if (_rewardRate > 0 && sp0.supply > 0) {
                   reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
+                  _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
                 }
+
             }
         }
 
@@ -707,6 +709,7 @@ contract Bribe {
         }
         if (_rewardRate > 0 && sp.supply > 0) {
             reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * _rewardRate * PRECISION / sp.supply);
+            _writeRewardPerTokenCheckpoint(token, reward, lastTimeRewardApplicable(token));
         }
 
         return reward;
@@ -768,7 +771,6 @@ contract Bribe {
     function notifyRewardAmount(address token, uint amount) external lock {
         rewardPerTokenStored[token] = updateRewardPerToken(token);
         lastUpdateTime[token] = block.timestamp;
-        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);
