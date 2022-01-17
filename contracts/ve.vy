@@ -47,7 +47,7 @@ interface ERC721Metadata:
 
     def tokenURI(
             _tokenId: uint256
-        ) -> String[128]: view
+        ) -> String[2048]: view
 
 # Interface for ERC721Enumerable
 
@@ -86,7 +86,7 @@ interface ERC20:
     def transferFrom(spender: address, to: address, amount: uint256) -> bool: nonpayable
 
 interface Tokenizer:
-    def tokenURI(tokenId: uint256, balanceOf: uint256, locked_end: uint256, _value: uint256) -> String[1024]: view
+    def tokenURI(tokenId: uint256, balanceOf: uint256, locked_end: uint256, _value: uint256) -> String[2048]: view
 
 DEPOSIT_FOR_TYPE: constant(int128) = 0
 CREATE_LOCK_TYPE: constant(int128) = 1
@@ -940,7 +940,7 @@ def _balanceOfNFT(_tokenId: uint256, _t: uint256 = block.timestamp) -> uint256:
 
 @view
 @external
-def tokenURI(_tokenId: uint256) -> String[1024]:
+def tokenURI(_tokenId: uint256) -> String[2048]:
     """
     @dev Returns current token URI metadata
     @param _tokenId Token ID to fetch URI for.

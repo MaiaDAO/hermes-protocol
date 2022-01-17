@@ -1,8 +1,8 @@
-  
-  
+
+
 ![alt text](Solidly-Logo_Dark.png)
-  
-  
+
+
 Solidly allows low cost, near 0 slippage trades on uncorrelated or tightly correlated assets. The protocol incentivizes fees instead of liquidity. Liquidity providers (LPs) are given incentives in the form of `token`, the amount received is calculated as follows;
 
 * 100% of weekly distribution weighted on votes from ve-token holders
@@ -109,3 +109,16 @@ Gauge factory permissionlessly creates gauges for `pools` created by StableV1Fac
 function vote(address[] calldata _poolVote, uint[] calldata _weights) external
 function distribute(address token) external
 ```
+
+### Testnet deployment
+
+| Name | Address |
+| :--- | :--- |
+| BaseV1Factory | [0xA3d3dbE145D3A84Fcd765521D5b3d8FEe143a982](https://testnet.ftmscan.com/address/0xa3d3dbe145d3a84fcd765521d5b3d8fee143a982#code) |
+| BaseV1Router01 | [0x1564CA6da482b497dDD9dE2f96b4B7A439B8aB43](https://testnet.ftmscan.com/address/0x1564CA6da482b497dDD9dE2f96b4B7A439B8aB43#code) |
+| BaseV1 | [0xd3C885b06E9308ed1BC0f4EEF9bAee17652Ed747](https://testnet.ftmscan.com/address/0xd3C885b06E9308ed1BC0f4EEF9bAee17652Ed747#code) |
+| tokenizer | [0x3092326DB3220b5102A2999e8A5e80cd7503E1b5](https://testnet.ftmscan.com/address/0x3092326DB3220b5102A2999e8A5e80cd7503E1b5#code) |
+| ve3 | [0x903F1ef9cA813d4C68cA9a0e60Afda478da1538b](https://testnet.ftmscan.com/address/0x903F1ef9cA813d4C68cA9a0e60Afda478da1538b#code) |
+| ve3-dist | [0x4C5C314E3E977110c9d5bdE3FF297D6C65D6A41C](https://testnet.ftmscan.com/address/0x4C5C314E3E977110c9d5bdE3FF297D6C65D6A41C#code) |
+| BaseV1Gauges | [0x1Cd6969841337De39004447eE55dD79E43Da46dB](https://testnet.ftmscan.com/address/0x1Cd6969841337De39004447eE55dD79E43Da46dB#code) |
+| BaseV1Minter | [0x61ee3855bD1366D02F44D8c2eC862dCb7a93F71F](https://testnet.ftmscan.com/address/0x61ee3855bD1366D02F44D8c2eC862dCb7a93F71F#code) |
