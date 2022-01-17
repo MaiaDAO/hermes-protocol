@@ -107,6 +107,7 @@ describe("BaseV1Factory", function () {
     await ust.transfer(pair.address, ust_1);
     await mim.transfer(pair.address, mim_1);
     await pair.mint(owner.address);
+    console.log(await pair.getAmountOut(ust_1, ust.address));
 
     /*await pair.transfer(pair.address, await pair.balanceOf(owner.address));
     await pair.burn(owner.address);

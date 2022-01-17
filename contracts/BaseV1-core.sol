@@ -31,6 +31,18 @@ library Math {
             z = 1;
         }
     }
+    function cbrt(uint256 n) internal pure returns (uint256) { unchecked {
+        uint256 x = 0;
+        for (uint256 y = 1 << 255; y > 0; y >>= 3) {
+            x <<= 1;
+            uint256 z = 3 * x * (x + 1) + 1;
+            if (n / y >= z) {
+                n -= y * z;
+                x += 1;
+            }
+        }
+        return x;
+    }}
 }
 
 interface IBaseV1Callee {
@@ -584,53 +596,66 @@ contract BaseV1Pair {
         _update(erc20(token0).balanceOf(address(this)), erc20(token1).balanceOf(address(this)), reserve0, reserve1);
     }
 
-    // getAmountOut gives the amount that will be returned given the amountIn for tokenIn
-    function getAmountOut(uint amountIn, address tokenIn) external view returns (uint) {
-        (uint _reserve0, uint _reserve1,) = getReserves();
-        amountIn -= amountIn / 10000; // remove fee from amount received
-        if (stable) {
-            (uint _k0, uint _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1) : (_reserve0, amountIn+_reserve1);
-            uint _kB = Math.sqrt(Math.sqrt(_k(_reserve0, _reserve1)*1e18)*1e18) * 2;
-            uint _kA1 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
-            uint _yOut0 = (_kA1 - _kB);
+    function _x4(uint x) internal pure returns (uint) {
+        return x*x/1e18*x/1e18*x/1e18;
+    }
 
-            (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut0) : (_reserve0-_yOut0, amountIn+_reserve1);
-            uint _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
-            while (_kA2 < _kB) {
-                uint _diff = _kB - _kA2;
-                _yOut0 -= _diff;
-                (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut0) : (_reserve0-_yOut0, amountIn+_reserve1);
-                _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
-            }
-            uint _yOut1 = _yOut0;
-            while (_kA2 > _kB) {
-                uint _diff = _kA2 - _kB;
-                _yOut1 += _diff;
-                (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut1) : (_reserve0-_yOut1, amountIn+_reserve1);
-                _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
-            }
+    function _x3(uint x) internal pure returns (uint) {
+        return x*x/1e18*x/1e18;
+    }
 
-            uint _yOut = (_yOut0+_yOut1)/2;
-            {
-                for (uint i = 0; i < 64; i++) {
-                    (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut) : (_reserve0-_yOut, amountIn+_reserve1);
-                    _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
+    function _x9(uint x) internal pure returns (uint) {
+        return _x4(x)*x/1e18*x/1e18*x/1e18*x/1e18*x/1e18;
+    }
 
-                    if (_kA2 > _kB) {
-                        _yOut = (_yOut+_yOut0)/2;
-                    } else if (_kA2 < _kB) {
-                        _yOut = (_yOut+_yOut1)/2;
-                    } else {
-                        break;
-                    }
-                }
-            }
+    function _x12(uint x) internal pure returns (uint) {
+        return _x9(x)*x/1e18*x/1e18*x/1e18;
+    }
 
-            return _yOut * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
-        } else {
-            (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
-            return amountIn * reserveB / (reserveA + amountIn);
+    function _c0(uint a, uint b, uint x) internal pure returns (uint) {
+        uint a3 = a*a/1e18*a/1e18;
+        uint b3 = b*b/1e18*b/1e18;
+        uint x2 = x*x/1e18;
+        return 27*a3*b/1e18*x2/1e18+27*a*b3/1e18*x2/1e18;
+    }
+
+    function _c1(uint x, uint c0) internal pure returns (uint) {
+        uint x12 = _x12(x);
+        return (Math.sqrt(c0*c0+108e18*x12)+c0);
+    }
+
+    // Math.cbrt(2e54) = 1259921049894873164
+    function _get_y(uint xIn, uint a, uint b) internal view returns (uint amountOut) {
+        xIn = xIn * 1e18 / decimals0;
+        a = a * 1e18 / decimals0;
+        b = b * 1e18 / decimals1;
+        uint x = xIn+a;
+        uint c1 = 0;
+        uint b1 = 0;
+        uint b2 = 0;
+        {
+            uint c0 = _c0(a, b, x);
+            c1 = _c1(x, c0);
+            c1 = Math.cbrt(c1*1e36)*1e18;
+            b1 = 3e18*Math.cbrt(2e54)/1e18*x/1e18;
+            b2 = (Math.cbrt(2e54)*_x3(x))*1e18;
         }
+
+        uint y0 = c1/b1-b2/c1;
+        return (b - y0);
+    }
+
+    function getAmountOut(uint amountIn, address tokenIn) external view returns (uint) {
+      (uint _reserve0, uint _reserve1,) = getReserves();
+      amountIn -= amountIn / 10000; // remove fee from amount received
+      if (stable) {
+          (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+          uint y = _get_y(amountIn, reserveA, reserveB);
+          return y * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
+      } else {
+          (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+          return amountIn * reserveB / (reserveA + amountIn);
+      }
     }
 
     function _k(uint x, uint y) internal view returns (uint) {

@@ -1,9 +1,37 @@
-const xIn = 200;
-const x = 1000;
-const y = 1000;
+const xIn = 999900000000000000;
+const _x = 2000000000000000000;
+const _y = 2000000000000000000;
 
-yOut = getAmountOut(xIn,x,y);
+yOut = get_y(xIn,_x,_y);
 
+
+function get_y(xIn, a, b) {
+  x = xIn + a;
+  _c = (Math.sqrt(((27*(a**3)*b*(x**2)+27*a*(b**3)*(x**2))**2)+108*x**12)+27*(a**3)*b*(x**2)+27*a*(b**3)*(x**2));
+  c0 = 27*a**3*b*x**2+27*a*b**3*x**2;
+  _c1 = (Math.sqrt(c0*c0+108*x**12)+c0)
+  c1 = Math.cbrt(_c1)
+  b1 = (3*2**(1/3)*x)
+  b1 = 3*Math.cbrt(2)*x
+  b2 = ((2**(1/3))*(x**3))
+  console.log("c1", c1);
+  console.log("b1", b1);
+  console.log("b2", b2);
+  console.log("c1/b1 %s", c1/b1);
+  console.log("b2/c1 %s", b2/c1);
+  y = c1/b1-b2/c1
+  console.log("y", b-y)
+}
+
+/*function get_y(xIn, a, b) {
+  x = xIn + a;
+  y0 = Math.cbrt(Math.sqrt(((27*(a**3)*b*(x**2)+27*a*(b**3)*(x**2))**2)+108*x**12)+27*(a**3)*b*(x**2)+27*a*(b**3)*(x**2))
+  y1 = y0 / 3*Math.cbrt(2)*x
+  y2 = Math.cbrt(2)*(x**3) / y0
+  y = y1 - y2
+  console.log(y)
+  console.log(b-y)
+}*/
 
 // getAmountOut gives the amount that will be returned given the amountIn for tokenIn
 function getAmountOut(xIn, x, y) {
@@ -45,8 +73,6 @@ function getAmountOut(xIn, x, y) {
 
   for (i = 0; i < 255; i++) {
     _kA2 = Math.sqrt(Math.sqrt(_k(x+xIn, y-yOut))) * 2;
-
-    console.log("_kA2",_kA2);
     if (_kA2 > _kB) {
       yOut = (yOut+yOutBelow)/2
     } else if (_kA2 < _kB) {
