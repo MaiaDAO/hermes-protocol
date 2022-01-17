@@ -85,6 +85,9 @@ interface ERC20:
     def transfer(to: address, amount: uint256) -> bool: nonpayable
     def transferFrom(spender: address, to: address, amount: uint256) -> bool: nonpayable
 
+interface Tokenizer:
+    def tokenURI(tokenId: uint256, balanceOf: uint256, locked_end: uint256, _value: uint256) -> String[1024]: view
+
 DEPOSIT_FOR_TYPE: constant(int128) = 0
 CREATE_LOCK_TYPE: constant(int128) = 1
 INCREASE_LOCK_AMOUNT: constant(int128) = 2
@@ -162,6 +165,7 @@ name: public(String[64])
 symbol: public(String[32])
 version: public(String[32])
 decimals: public(uint256)
+tokenizer: address
 
 MIN_VE: constant(uint256) = 2500 * 10**18
 
@@ -208,7 +212,7 @@ ERC721_METADATA_INTERFACE_ID: constant(bytes32) = 0x0000000000000000000000000000
 ERC721_ENUMERABLE_INTERFACE_ID: constant(bytes32) = 0x00000000000000000000000000000000000000000000000000000000780e9d63
 
 @external
-def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32]):
+def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32], tokenizer: address):
     """
     @notice Contract constructor
     @param token_addr `ERC20CRV` token address
@@ -227,6 +231,7 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.name = _name
     self.symbol = _symbol
     self.version = _version
+    self.tokenizer = tokenizer
 
     self.supportedInterfaces[ERC165_INTERFACE_ID] = True
     self.supportedInterfaces[ERC721_INTERFACE_ID] = True
@@ -334,15 +339,6 @@ def isApprovedForAll(_owner: address, _operator: address) -> bool:
     @param _operator The address that acts on behalf of the owner.
     """
     return (self.ownerToOperators[_owner])[_operator]
-
-@view
-@external
-def tokenURI(_tokenId: uint256) -> String[128]:
-    """
-    @dev Returns current token URI metadata
-    @param _tokenId Token ID to fetch URI for.
-    """
-    return self.tokenBaseURI
 
 @view
 @external
@@ -768,9 +764,8 @@ def merge(_from: uint256, _to: uint256):
     _locked1: LockedBalance = self.locked[_to]
     value0: uint256 = convert(_locked0.amount, uint256)
     end: uint256 = max(_locked0.end, _locked1.end)
-    _empty: LockedBalance = LockedBalance({end:0,amount:0})
 
-    self._checkpoint(_from, _locked0, _empty)
+    self._checkpoint(_from, _locked0, empty(LockedBalance))
     self._deposit_for(msg.sender, _to, value0, end, _locked1, MERGE_TYPE)
 
 
@@ -941,6 +936,17 @@ def _balanceOfNFT(_tokenId: uint256, _t: uint256 = block.timestamp) -> uint256:
         if last_point.bias < 0:
             last_point.bias = 0
         return convert(last_point.bias, uint256)
+
+
+@view
+@external
+def tokenURI(_tokenId: uint256) -> String[1024]:
+    """
+    @dev Returns current token URI metadata
+    @param _tokenId Token ID to fetch URI for.
+    """
+    _locked: LockedBalance = self.locked[_tokenId]
+    return Tokenizer(self.tokenizer).tokenURI(_tokenId, self._balanceOfNFT(_tokenId), _locked.end, convert(_locked.amount, uint256))
 
 @external
 @view
