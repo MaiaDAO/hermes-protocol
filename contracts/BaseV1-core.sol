@@ -612,21 +612,19 @@ contract BaseV1Pair {
 
             uint _yOut = (_yOut0+_yOut1)/2;
             {
-            for (uint i = 0; i < 64; i++) {
-                (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut) : (_reserve0-_yOut, amountIn+_reserve1);
-                _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
+                for (uint i = 0; i < 64; i++) {
+                    (_k0, _k1) = tokenIn == token0 ? (amountIn+_reserve0, _reserve1-_yOut) : (_reserve0-_yOut, amountIn+_reserve1);
+                    _kA2 = Math.sqrt(Math.sqrt(_k(_k0, _k1)*1e18)*1e18) * 2;
 
-                if (_kA2 > _kB) {
-                    _yOut = (_yOut+_yOut0)/2;
-                } else if (_kA2 < _kB) {
-                    _yOut = (_yOut+_yOut1)/2;
-                } else {
-                    break;
+                    if (_kA2 > _kB) {
+                        _yOut = (_yOut+_yOut0)/2;
+                    } else if (_kA2 < _kB) {
+                        _yOut = (_yOut+_yOut1)/2;
+                    } else {
+                        break;
+                    }
                 }
             }
-          }
-
-
 
             return _yOut * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
         } else {
