@@ -122,5 +122,7 @@ function distribute(address token) external
 | ve3-dist | [0x4C5C314E3E977110c9d5bdE3FF297D6C65D6A41C](https://testnet.ftmscan.com/address/0x4C5C314E3E977110c9d5bdE3FF297D6C65D6A41C#code) |
 | BaseV1Gauges | [0x1Cd6969841337De39004447eE55dD79E43Da46dB](https://testnet.ftmscan.com/address/0x1Cd6969841337De39004447eE55dD79E43Da46dB#code) |
 | BaseV1Minter | [0x61ee3855bD1366D02F44D8c2eC862dCb7a93F71F](https://testnet.ftmscan.com/address/0x61ee3855bD1366D02F44D8c2eC862dCb7a93F71F#code) |
-| UST-6 | [0x8ad96050318043166114884b59E2fc82210273b3](https://testnet.ftmscan.com/address/0x8ad96050318043166114884b59E2fc82210273b3#code) |
-| UST-18 | [0x976e33B07565b0c05B08b2e13AfFD3113e3D178d](https://testnet.ftmscan.com/address/0x976e33B07565b0c05B08b2e13AfFD3113e3D178d#code) |
+| USDT| [0x8ad96050318043166114884b59E2fc82210273b3](https://testnet.ftmscan.com/address/0x8ad96050318043166114884b59E2fc82210273b3#code) |
+| MIM | [0x976e33B07565b0c05B08b2e13AfFD3113e3D178d](https://testnet.ftmscan.com/address/0x976e33B07565b0c05B08b2e13AfFD3113e3D178d#code) |
+| StableV1 AMM | [0xd55e6Fe8582feDc90976f4b19Fc0E792B25A13fE](https://testnet.ftmscan.com/address/0xd55e6Fe8582feDc90976f4b19Fc0E792B25A13fE#code) |
+| StableV1 Gauge | [0x633902a0E4bb1d47999Ad9991348707634AB18B9](https://testnet.ftmscan.com/address/0x633902a0E4bb1d47999Ad9991348707634AB18B9#code) |
