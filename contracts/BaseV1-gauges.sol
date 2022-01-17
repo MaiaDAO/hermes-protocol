@@ -38,8 +38,8 @@ contract Gauge {
     address public immutable stake; // the LP token that needs to be staked for rewards
     address immutable _ve; // the ve token used for gauges
 
-    uint public derivedSupply;
-    mapping(address => uint) public derivedBalances;
+    uint internal derivedSupply;
+    mapping(address => uint) internal derivedBalances;
 
     uint constant DURATION = 7 days; // rewards are released over 7 days
     uint constant PRECISION = 10 ** 18;
@@ -48,14 +48,17 @@ contract Gauge {
     mapping(address => uint) public rewardRate;
     mapping(address => uint) public periodFinish;
     mapping(address => uint) public lastUpdateTime;
-    mapping(address => uint) public rewardPerTokenStored;
+    mapping(address => uint) internal rewardPerTokenStored;
 
-    mapping(address => mapping(address => uint)) public lastEarn;
+    mapping(address => mapping(address => uint)) internal lastEarn;
 
     mapping(address => uint) public tokenIds;
 
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
+
+    address[] public rewards;
+    mapping(address => bool) public isReward;
 
     /// @notice A checkpoint for marking balance
    struct Checkpoint {
@@ -246,6 +249,10 @@ contract Gauge {
       }
     }
 
+    function rewardsListLength() external view returns (uint) {
+        return rewards.length;
+    }
+
     // returns the last time the reward was modified or periodFinish if the reward has ended
     function lastTimeRewardApplicable(address token) public view returns (uint) {
         return Math.min(block.timestamp, periodFinish[token]);
@@ -433,6 +440,10 @@ contract Gauge {
             rewardRate[token] = (amount + _left) / DURATION;
         }
         periodFinish[token] = block.timestamp + DURATION;
+        if (!isReward[token]) {
+            isReward[token] = true;
+            rewards.push(token);
+        }
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
@@ -464,7 +475,10 @@ contract Bribe {
     mapping(address => uint) public lastUpdateTime;
     mapping(address => uint) public rewardPerTokenStored;
 
-    mapping(address => mapping(uint => uint)) public lastEarn;
+    mapping(address => mapping(uint => uint)) internal lastEarn;
+
+    address[] public rewards;
+    mapping(address => bool) internal isReward;
 
     uint public totalSupply;
     mapping(uint => uint) public balanceOf;
@@ -652,6 +666,10 @@ contract Bribe {
       }
     }
 
+    function rewardsListLength() external view returns (uint) {
+        return rewards.length;
+    }
+
     // returns the last time the reward was modified or periodFinish if the reward has ended
     function lastTimeRewardApplicable(address token) public view returns (uint) {
         return Math.min(block.timestamp, periodFinish[token]);
@@ -789,6 +807,10 @@ contract Bribe {
             rewardRate[token] = (amount + _left) / DURATION;
         }
         periodFinish[token] = block.timestamp + DURATION;
+        if (!isReward[token]) {
+            isReward[token] = true;
+            rewards.push(token);
+        }
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
