@@ -291,7 +291,7 @@ contract Gauge {
         return Math.min(_derived + _adjusted, _balance);
     }
 
-    function updateRewardPerToken(address token) public view returns (uint) {
+    function updateRewardPerToken(address token) public returns (uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
@@ -312,6 +312,7 @@ contract Gauge {
                 SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
                 if (_rewardRate > 0 && sp0.supply > 0) {
                   reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
+                  _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
                 }
             }
         }
@@ -322,6 +323,7 @@ contract Gauge {
         }
         if (_rewardRate > 0 && sp.supply > 0) {
             reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * _rewardRate * PRECISION / sp.supply);
+            _writeRewardPerTokenCheckpoint(token, reward, lastTimeRewardApplicable(token));
         }
 
         return reward;
