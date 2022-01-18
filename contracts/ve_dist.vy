@@ -1,7 +1,7 @@
 # @version 0.2.7
 """
-@title Curve Fee Distribution
-@author Curve Finance
+@title Curve Fee Distribution modified for ve(3,3) emissions
+@author Curve Finance, andrecronje
 @license MIT
 """
 
@@ -401,7 +401,6 @@ def claim(_tokenId: uint256) -> uint256:
 
     amount: uint256 = self._claim(_tokenId, self.voting_escrow, last_token_time)
     if amount != 0:
-        token: address = self.token
         VotingEscrow(self.voting_escrow).deposit_for(_tokenId, amount)
         self.token_last_balance -= amount
 
