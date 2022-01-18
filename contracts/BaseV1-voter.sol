@@ -368,7 +368,7 @@ contract Bribe {
 
         Checkpoint memory cp = checkpoints[tokenId][_endIndex];
         (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
-        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][tokenId]) / PRECISION);
+        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][tokenId])) / PRECISION;
 
         return reward;
     }

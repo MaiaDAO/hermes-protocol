@@ -241,6 +241,11 @@ describe("BaseV1Factory", function () {
   });
 
   it("bribe claim rewards", async function () {
+    console.log(await ve_underlying.balanceOf(bribe.address));
+    console.log(await bribe.earned(ve_underlying.address, 1));
+    await bribe.getReward(1, [ve_underlying.address]);
+    console.log(await ve_underlying.balanceOf(bribe.address));
+    console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
   });
 

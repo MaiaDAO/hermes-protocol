@@ -378,7 +378,7 @@ contract Gauge {
 
         Checkpoint memory cp = checkpoints[account][_endIndex];
         (uint _rewardPerTokenStored,) = _getPriorRewardPerToken(token, cp.timestamp);
-        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][account]) / PRECISION);
+        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][account])) / PRECISION;
 
         return reward;
     }
