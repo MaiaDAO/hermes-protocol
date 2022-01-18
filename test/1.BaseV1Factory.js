@@ -47,8 +47,8 @@ describe("BaseV1Factory", function () {
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
-    ust.deployed();
-    mim.deployed();
+    await ust.deployed();
+    await mim.deployed();
   });
 
   it("confirm ust deployment", async function () {
@@ -201,6 +201,7 @@ describe("BaseV1Factory", function () {
 
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000);
     await bribe.notifyRewardAmount(ve_underlying.address, pair_1000);
+    console.log(await bribe.rewardPerToken(ve_underlying.address));
 
     expect(await gauge.rewardRate(ve_underlying.address)).to.equal(ethers.BigNumber.from(1653));
     expect(await bribe.rewardRate(ve_underlying.address)).to.equal(ethers.BigNumber.from(1653));
@@ -241,6 +242,7 @@ describe("BaseV1Factory", function () {
   });
 
   it("bribe claim rewards", async function () {
+    console.log(await bribe.rewardPerToken(ve_underlying.address));
     console.log(await ve_underlying.balanceOf(bribe.address));
     console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);

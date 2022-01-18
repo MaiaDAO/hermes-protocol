@@ -297,7 +297,7 @@ contract Bribe {
         _ve = BaseV1Voter(msg.sender)._ve();
     }
 
-    function rewardPerToken(address token) internal view returns (uint) {
+    function rewardPerToken(address token) public view returns (uint) {
         if (totalSupply == 0) {
             return rewardPerTokenStored[token];
         }
