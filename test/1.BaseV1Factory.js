@@ -246,6 +246,8 @@ describe("BaseV1Factory", function () {
     console.log(await ve_underlying.balanceOf(bribe.address));
     console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
+    await network.provider.send("evm_increaseTime", [604800])
+    await network.provider.send("evm_mine")
     console.log(await ve_underlying.balanceOf(bribe.address));
     console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
