@@ -436,10 +436,10 @@ contract BaseV1Voter {
 
     address[] public pools; // all pools viable for incentives
     mapping(address => address) public gauges; // pool => gauge
-    mapping(address => address) public poolForGauge; // pool => gauge
+    mapping(address => address) public poolForGauge; // gauge => pool
     mapping(address => address) public bribes; // gauge => bribe
     mapping(address => uint) public weights; // pool => weight
-    mapping(uint => mapping(address => uint)) public votes; // nft => votes
+    mapping(uint => mapping(address => uint)) public votes; // nft => pool => votes
     mapping(uint => address[]) public poolVote;// nft => pools
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
 
