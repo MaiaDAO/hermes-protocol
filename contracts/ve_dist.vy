@@ -416,8 +416,8 @@ def claim_many(_tokenIds: uint256[20]) -> bool:
     @dev Used to claim for many _tokenIds at once, or to make
          multiple claims for the same address when that address
          has significant ve history
-    @param _receivers List of addresses to claim for. Claiming
-                      terminates at the first `ZERO_ADDRESS`.
+    @param _tokenIds List of token Ids to claim for. Claiming
+                      terminates at the first `0`.
     @return bool success
     """
     assert not self.is_killed
@@ -455,7 +455,6 @@ def claim_many(_tokenIds: uint256[20]) -> bool:
 def burn() -> bool:
     """
     @notice Receive reward into the contract and trigger a token checkpoint
-    @param _coin Address of the coin being received (must be 3CRV)
     @return bool success
     """
     assert not self.is_killed
