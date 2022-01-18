@@ -34,9 +34,9 @@ interface ve_dist {
 
 contract BaseV1Minter {
     uint constant week = 86400 * 7; // allows minting once per week (reset every Thursday 00:00 UTC)
-    uint constant emission = 4; // 4% per week target emission
-    uint constant target_base = 100;
-    uint constant tail_base = 1000;
+    uint constant emission = 2;
+    uint constant target_base = 100; // 2% per week target emission
+    uint constant tail_base = 1000; // 0.2% per week target emission
     underlying public immutable _token;
     gauge_proxy public immutable _gauge_proxy;
     ve public immutable _ve;
@@ -51,7 +51,7 @@ contract BaseV1Minter {
       address __ve_dist // the distribution system that ensures users aren't diluted
     ) {
         _token = underlying(ve(__ve).token());
-        available = 500000000e18;//_available;
+        available = 1000000000e18;//_available;
         _gauge_proxy = gauge_proxy(__gauge_proxy);
         _ve = ve(__ve);
         _ve_dist = ve_dist(__ve_dist);
