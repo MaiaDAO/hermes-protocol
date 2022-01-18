@@ -394,9 +394,7 @@ contract Gauge {
 
         Checkpoint memory cp = checkpoints[account][_endIndex];
         (uint _rewardPerTokenStored,) = _getPriorRewardPerToken(token, cp.timestamp);
-        if (_rewardPerTokenStored > 0) {
-            reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
-        }
+        reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
 
         return reward;
     }
@@ -758,9 +756,7 @@ contract Bribe {
 
         Checkpoint memory cp = checkpoints[tokenId][_endIndex];
         (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
-        if (_rewardPerTokenStored > 0) {
-            reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
-        }
+        reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
 
         return reward;
     }
