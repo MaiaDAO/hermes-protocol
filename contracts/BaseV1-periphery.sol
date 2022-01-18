@@ -68,6 +68,7 @@ contract BaseV1Router01 {
     address public immutable factory;
     IWFTM public immutable wftm = IWFTM(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
+    bytes32 immutable pairCodeHash;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'BaseV1Router: EXPIRED');
@@ -76,6 +77,7 @@ contract BaseV1Router01 {
 
     constructor(address _factory) {
         factory = _factory;
+        pairCodeHash = IBaseV1Factory(_factory).pairCodeHash();
     }
 
     receive() external payable {
@@ -95,7 +97,7 @@ contract BaseV1Router01 {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1, stable)),
-                hex'108b06cb9da159d45846ec4656e2246e86781e7c320cafa39ec1b07f8410fdbb' // init code hash
+                pairCodeHash // init code hash
             )))));
     }
 

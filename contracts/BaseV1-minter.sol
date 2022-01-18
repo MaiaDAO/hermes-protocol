@@ -55,7 +55,6 @@ contract BaseV1Minter {
         _gauge_proxy = gauge_proxy(__gauge_proxy);
         _ve = ve(__ve);
         _ve_dist = ve_dist(__ve_dist);
-
     }
 
     // calculate circulating supply as total token supply - locked supply
@@ -63,7 +62,7 @@ contract BaseV1Minter {
         return _token.totalSupply() - _ve.totalSupply();
     }
 
-    // emission calculation is 4% of available supply to mint adjusted by circulating / total supply
+    // emission calculation is 2% of available supply to mint adjusted by circulating / total supply
     function calculate_emission() public view returns (uint) {
         return available * emission / target_base * circulating_supply() / _token.totalSupply();
     }
@@ -73,7 +72,7 @@ contract BaseV1Minter {
         return Math.max(calculate_emission(), circulating_emission());
     }
 
-    // calculates tail end (infinity) emissions as 0.4% of total supply
+    // calculates tail end (infinity) emissions as 0.2% of total supply
     function circulating_emission() public view returns (uint) {
         return circulating_supply() * emission / tail_base;
     }
