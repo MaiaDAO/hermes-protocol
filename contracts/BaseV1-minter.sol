@@ -34,8 +34,9 @@ interface ve_dist {
 
 contract BaseV1Minter {
     uint constant week = 86400 * 7; // allows minting once per week (reset every Thursday 00:00 UTC)
-    uint constant emission = 4; // 0.4% per week target emission
-    uint constant base = 100;
+    uint constant emission = 4; // 4% per week target emission
+    uint constant target_base = 100;
+    uint constant tail_base = 1000;
     underlying public immutable _token;
     gauge_proxy public immutable _gauge_proxy;
     ve public immutable _ve;
@@ -62,9 +63,9 @@ contract BaseV1Minter {
         return _token.totalSupply() - _ve.totalSupply();
     }
 
-    // emission calculation is 0.4% of available supply to mint adjusted by circulating / total supply
+    // emission calculation is 4% of available supply to mint adjusted by circulating / total supply
     function calculate_emission() public view returns (uint) {
-        return available * emission / base * circulating_supply() / _token.totalSupply();
+        return available * emission / target_base * circulating_supply() / _token.totalSupply();
     }
 
     // weekly emission takes the max of calculated (aka target) emission versus circulating tail end emission
@@ -74,7 +75,7 @@ contract BaseV1Minter {
 
     // calculates tail end (infinity) emissions as 0.4% of total supply
     function circulating_emission() public view returns (uint) {
-        return circulating_supply() * emission / base;
+        return circulating_supply() * emission / tail_base;
     }
 
     // calculate inflation and adjust ve balances accordingly
@@ -93,13 +94,13 @@ contract BaseV1Minter {
                 available -= _amount;
             }
 
-            _token.mint(address(this), _amount); // mint weekly emission to gauge proxy (handles voting and distribution)
-            _token.approve(address(_gauge_proxy), _amount);
-            _gauge_proxy.notifyRewardAmount(_amount);
-
             _token.mint(address(_ve_dist), calculate_growth(_amount)); // mint inflation for staked users based on their % balance
             _ve_dist.checkpoint_token(); // checkpoint token balance that was just minted in ve_dist
             _ve_dist.checkpoint_total_supply(); // checkpoint supply
+
+            _token.mint(address(this), _amount); // mint weekly emission to gauge proxy (handles voting and distribution)
+            _token.approve(address(_gauge_proxy), _amount);
+            _gauge_proxy.notifyRewardAmount(_amount);
         }
         return _period;
     }
