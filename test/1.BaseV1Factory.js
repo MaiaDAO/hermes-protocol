@@ -33,6 +33,7 @@ describe("BaseV1Factory", function () {
   let bribe;
   let minter;
   let ve_dist;
+  let library;
 
   it("deploy base coins", async function () {
     [owner] = await ethers.getSigners();
@@ -137,7 +138,13 @@ describe("BaseV1Factory", function () {
   });
 
   it("deploy BaseV1Factory and test pair length", async function () {
-    const BaseV1Gauges = await ethers.getContractFactory("BaseV1Gauges");
+    const BaseV1GaugeLibrary = await ethers.getContractFactory("BaseV1GaugeLibrary");
+    library = await BaseV1GaugeLibrary.deploy();
+    const BaseV1Gauges = await ethers.getContractFactory("BaseV1Gauges", {
+      libraries: {
+        BaseV1GaugeLibrary: library.address
+      }
+    });
     gauge_factory = await BaseV1Gauges.deploy(ve.address, factory.address);
     await gauge_factory.deployed();
 
@@ -164,20 +171,28 @@ describe("BaseV1Factory", function () {
     const gauge_address = await gauge_factory.gauges(pair.address);
     const bribe_address = await gauge_factory.bribes(gauge_address);
 
-    const Gauge = await ethers.getContractFactory("Gauge");
+    const Gauge = await ethers.getContractFactory("Gauge", {
+      libraries: {
+        BaseV1GaugeLibrary: library.address
+      }
+    });
     gauge = await Gauge.attach(gauge_address);
 
-    const Bribe = await ethers.getContractFactory("Bribe");
+    const Bribe = await ethers.getContractFactory("Bribe", {
+      libraries: {
+        BaseV1GaugeLibrary: library.address
+      }
+    });
     bribe = await Bribe.attach(bribe_address);
 
     await pair.approve(gauge.address, pair_1000);
-    await gauge.deposit_test(pair_1000, owner.address);
+    await gauge.deposit(pair_1000, owner.address);
     expect(await gauge.totalSupply()).to.equal(pair_1000);
     expect(await gauge.earned(ve.address, owner.address)).to.equal(0);
   });
 
   it("withdraw gauge stake", async function () {
-    await gauge.withdraw_test();
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
     expect(await gauge.totalSupply()).to.equal(0);
   });
 
@@ -197,8 +212,8 @@ describe("BaseV1Factory", function () {
   it("exit & getReward gauge stake", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
-    await gauge.deposit_test(pair_1000, owner.address);
-    await gauge.withdraw_test();
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
     expect(await gauge.totalSupply()).to.equal(0);
   });
 
@@ -219,9 +234,7 @@ describe("BaseV1Factory", function () {
   it("gauge distribute based on voting", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await ve_underlying.approve(gauge_factory.address, pair_1000);
-    console.log(await gauge_factory.index());
     await gauge_factory.notifyRewardAmount(pair_1000);
-    console.log(await gauge_factory.index());
     await gauge_factory.updateAll();
     await gauge_factory.distro();
   });
@@ -231,7 +244,7 @@ describe("BaseV1Factory", function () {
   });
 
   it("bribe claim rewards", async function () {
-    await bribe.getReward(1, ve_underlying.address);
+    await bribe.getReward(1, [ve_underlying.address]);
   });
 
 });

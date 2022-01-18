@@ -13,7 +13,6 @@ library Math {
 interface erc20 {
     function totalSupply() external view returns (uint256);
     function transfer(address recipient, uint amount) external returns (bool);
-    function decimals() external view returns (uint8);
     function balanceOf(address) external view returns (uint);
     function transferFrom(address sender, address recipient, uint amount) external returns (bool);
     function approve(address spender, uint value) external returns (bool);
@@ -34,6 +33,27 @@ interface IBaseV1Factory {
 interface IBaseV1Core {
     function claimFees() external returns (uint, uint);
     function tokens() external returns (address, address);
+}
+
+library BaseV1GaugeLibrary {
+
+  function safeTransfer(address token, address to, uint256 value) external {
+      (bool success, bytes memory data) =
+          token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+      require(success && (data.length == 0 || abi.decode(data, (bool))));
+  }
+
+  function safeTransferFrom(address token, address from, address to, uint256 value) external {
+      (bool success, bytes memory data) =
+          token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+      require(success && (data.length == 0 || abi.decode(data, (bool))));
+  }
+
+  function safeApprove(address token, address spender, uint256 value) external {
+      (bool success, bytes memory data) =
+          token.call(abi.encodeWithSelector(erc20.approve.selector, spender, value));
+      require(success && (data.length == 0 || abi.decode(data, (bool))));
+  }
 }
 
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
@@ -69,8 +89,8 @@ contract Gauge {
     function claimFees() external returns (uint claimed0, uint claimed1) {
         (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
         (address _token0, address _token1) = IBaseV1Core(stake).tokens();
-        _safeApprove(_token0, bribe, claimed0);
-        _safeApprove(_token1, bribe, claimed1);
+        BaseV1GaugeLibrary.safeApprove(_token0, bribe, claimed0);
+        BaseV1GaugeLibrary.safeApprove(_token1, bribe, claimed1);
         Bribe(bribe).notifyRewardAmount(_token0, claimed0);
         Bribe(bribe).notifyRewardAmount(_token1, claimed1);
     }
@@ -274,18 +294,20 @@ contract Gauge {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    function getReward(address token) external lock {
-      uint _reward = earned(token, msg.sender);
-      lastEarn[token][msg.sender] = block.timestamp;
-      if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
+    function getReward(address[] memory tokens, address account) public lock {
+      for (uint i = 0; i < tokens.length; i++) {
+          uint _reward = earned(tokens[i], account);
+          lastEarn[tokens[i]][account] = block.timestamp;
+          if (_reward > 0) BaseV1GaugeLibrary.safeTransfer(tokens[i], account, _reward);
+      }
 
-      uint _derivedBalance = derivedBalances[msg.sender];
+      uint _derivedBalance = derivedBalances[account];
       derivedSupply -= _derivedBalance;
-      _derivedBalance = derivedBalance(msg.sender);
-      derivedBalances[msg.sender] = _derivedBalance;
+      _derivedBalance = derivedBalance(account);
+      derivedBalances[account] = _derivedBalance;
       derivedSupply += _derivedBalance;
 
-      _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
+      _writeCheckpoint(account, derivedBalances[account]);
       _writeSupplyCheckpoint();
     }
 
@@ -379,21 +401,9 @@ contract Gauge {
         return reward;
     }
 
-    function deposit(uint tokenId) external {
-        _deposit(erc20(stake).balanceOf(msg.sender), tokenId);
-    }
-
-    function deposit(uint amount, uint tokenId) external {
-        _deposit(amount, tokenId);
-    }
-
-    function deposit_test(uint amount, uint tokenId) external {
-        _deposit(amount, tokenId);
-    }
-
-    function _deposit(uint amount, uint tokenId) internal lock {
+    function deposit(uint amount, uint tokenId) external lock {
         tokenIds[msg.sender] = tokenId;
-        _safeTransferFrom(stake, msg.sender, address(this), amount);
+        BaseV1GaugeLibrary.safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
 
@@ -407,23 +417,11 @@ contract Gauge {
         _writeSupplyCheckpoint();
     }
 
-    function withdraw_test() external {
-        _withdraw(balanceOf[msg.sender]);
-    }
-
-    function withdraw() external {
-        _withdraw(balanceOf[msg.sender]);
-    }
-
-    function withdraw(uint amount) external {
-        _withdraw(amount);
-    }
-
-    function _withdraw(uint amount) internal lock {
+    function withdraw(uint amount) public lock {
         tokenIds[msg.sender] = 0;
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
-        _safeTransfer(stake, msg.sender, amount);
+        BaseV1GaugeLibrary.safeTransfer(stake, msg.sender, amount);
 
         uint _derivedBalance = derivedBalances[msg.sender];
         derivedSupply -= _derivedBalance;
@@ -441,13 +439,13 @@ contract Gauge {
         _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 
         if (block.timestamp >= periodFinish[token]) {
-            _safeTransferFrom(token, msg.sender, address(this), amount);
+            BaseV1GaugeLibrary.safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = amount / DURATION;
         } else {
             uint _remaining = periodFinish[token] - block.timestamp;
             uint _left = _remaining * rewardRate[token];
             require(amount > _left);
-            _safeTransferFrom(token, msg.sender, address(this), amount);
+            BaseV1GaugeLibrary.safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
         periodFinish[token] = block.timestamp + DURATION;
@@ -455,24 +453,6 @@ contract Gauge {
             isReward[token] = true;
             rewards.push(token);
         }
-    }
-
-    function _safeTransfer(address token, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
-    function _safeApprove(address token, address spender, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.approve.selector, spender, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
 
@@ -693,11 +673,13 @@ contract Bribe {
     }
 
     // allows a user to claim rewards for a given token
-    function getReward(uint tokenId, address token) public lock  {
+    function getReward(uint tokenId, address[] memory tokens) public lock  {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
-        uint _reward = earned(token, tokenId);
-        lastEarn[token][tokenId] = block.timestamp;
-        if (_reward > 0) _safeTransfer(token, msg.sender, _reward);
+        for (uint i = 0; i < tokens.length; i++) {
+            uint _reward = earned(tokens[i], tokenId);
+            lastEarn[tokens[i]][tokenId] = block.timestamp;
+            if (_reward > 0) BaseV1GaugeLibrary.safeTransfer(tokens[i], msg.sender, _reward);
+        }
     }
 
     constructor() {
@@ -809,13 +791,13 @@ contract Bribe {
         lastUpdateTime[token] = block.timestamp;
 
         if (block.timestamp >= periodFinish[token]) {
-            _safeTransferFrom(token, msg.sender, address(this), amount);
+            BaseV1GaugeLibrary.safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = amount / DURATION;
         } else {
             uint _remaining = periodFinish[token] - block.timestamp;
             uint _left = _remaining * rewardRate[token];
             require(amount > _left);
-            _safeTransferFrom(token, msg.sender, address(this), amount);
+            BaseV1GaugeLibrary.safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
         periodFinish[token] = block.timestamp + DURATION;
@@ -824,25 +806,13 @@ contract Bribe {
             rewards.push(token);
         }
     }
-
-    function _safeTransfer(address token, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
 }
 
 contract BaseV1Gauges {
 
     address public immutable _ve; // the ve token that governs these contracts
-    address public immutable factory; // the BaseV1Factory
-    address public immutable base;
+    address internal immutable factory; // the BaseV1Factory
+    address internal immutable base;
 
     uint public totalWeight; // total voting weight
 
@@ -855,7 +825,7 @@ contract BaseV1Gauges {
         _unlocked = 1;
     }
 
-    address[] internal _pools; // all pools viable for incentives
+    address[] public pools; // all pools viable for incentives
     mapping(address => address) public gauges; // pool => gauge
     mapping(address => address) public poolForGauge; // pool => gauge
     mapping(address => address) public bribes; // gauge => bribe
@@ -863,10 +833,6 @@ contract BaseV1Gauges {
     mapping(uint => mapping(address => uint)) public votes; // nft => votes
     mapping(uint => address[]) public poolVote;// nft => pools
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
-
-    function pools() external view returns (address[] memory) {
-        return _pools;
-    }
 
     constructor(address __ve, address _factory) {
         _ve = __ve;
@@ -959,21 +925,21 @@ contract BaseV1Gauges {
         gauges[_pool] = _gauge;
         poolForGauge[_gauge] = _pool;
         _updateFor(_gauge);
-        _pools.push(_pool);
+        pools.push(_pool);
         return _gauge;
     }
 
     function length() external view returns (uint) {
-        return _pools.length;
+        return pools.length;
     }
 
-    uint public index;
-    mapping(address => uint) public supplyIndex;
+    uint internal index;
+    mapping(address => uint) internal supplyIndex;
     mapping(address => uint) public claimable;
 
     // Accrue fees on token0
     function notifyRewardAmount(uint amount) public lock {
-        _safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
+        BaseV1GaugeLibrary.safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
         uint256 _ratio = amount * 1e18 / totalWeight; // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
           index += _ratio;
@@ -988,12 +954,12 @@ contract BaseV1Gauges {
 
     function updateFor(uint start, uint end) public {
         for (uint i = start; i < end; i++) {
-            _updateFor(gauges[_pools[i]]);
+            _updateFor(gauges[pools[i]]);
         }
     }
 
     function updateAll() public {
-        updateFor(0, _pools.length);
+        updateFor(0, pools.length);
     }
 
     function updateFor(address _gauge) external {
@@ -1028,16 +994,16 @@ contract BaseV1Gauges {
     }
 
     function distro() external {
-        distribute(0, _pools.length);
+        distribute(0, pools.length);
     }
 
     function distribute() external {
-        distribute(0, _pools.length);
+        distribute(0, pools.length);
     }
 
     function distribute(uint start, uint finish) public {
         for (uint x = start; x < finish; x++) {
-            distribute(gauges[_pools[x]]);
+            distribute(gauges[pools[x]]);
         }
     }
 
@@ -1048,7 +1014,7 @@ contract BaseV1Gauges {
     }
 
     function distributeEx(address token) external {
-        distributeEx(token, 0, _pools.length);
+        distributeEx(token, 0, pools.length);
     }
 
     // setup distro > then distribute
@@ -1058,9 +1024,9 @@ contract BaseV1Gauges {
         if (_balance > 0 && totalWeight > 0) {
             uint _totalWeight = totalWeight;
             for (uint x = start; x < finish; x++) {
-              uint _reward = _balance * weights[_pools[x]] / _totalWeight;
+              uint _reward = _balance * weights[pools[x]] / _totalWeight;
               if (_reward > 0) {
-                  address _gauge = gauges[_pools[x]];
+                  address _gauge = gauges[pools[x]];
 
                   erc20(token).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
                   erc20(token).approve(_gauge, _reward);
@@ -1068,11 +1034,5 @@ contract BaseV1Gauges {
               }
             }
         }
-    }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
