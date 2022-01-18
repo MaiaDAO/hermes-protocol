@@ -169,7 +169,7 @@ contract BaseV1Pair {
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint) public nonces;
 
-    uint public constant MINIMUM_LIQUIDITY = 10**3;
+    uint internal constant MINIMUM_LIQUIDITY = 10**3;
 
     event Transfer(address indexed from, address indexed to, uint amount);
     event Approval(address indexed owner, address indexed spender, uint amount);

@@ -67,6 +67,7 @@ contract BaseV1Router01 {
 
     address public immutable factory;
     IWFTM public immutable wftm = IWFTM(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
+    uint internal constant MINIMUM_LIQUIDITY = 10**3;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'BaseV1Router: EXPIRED');
@@ -94,7 +95,7 @@ contract BaseV1Router01 {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1, stable)),
-                hex'f519e3d6cdf2cd79ac8011b98b0cd5683441b66c27499938247ecf05361ced21' // init code hash
+                hex'108b06cb9da159d45846ec4656e2246e86781e7c320cafa39ec1b07f8410fdbb' // init code hash
             )))));
     }
 
@@ -124,6 +125,59 @@ contract BaseV1Router01 {
 
     function isPair(address pair) external view returns (bool) {
         return IBaseV1Factory(factory).isPair(pair);
+    }
+
+    function quoteAddLiquidity(
+        address tokenA,
+        address tokenB,
+        bool stable,
+        uint amountADesired,
+        uint amountBDesired
+    ) external view returns (uint amountA, uint amountB, uint liquidity) {
+        // create the pair if it doesn't exist yet
+        address _pair = IBaseV1Factory(factory).getPair(tokenA, tokenB, stable);
+        (uint reserveA, uint reserveB) = (0,0);
+        uint _totalSupply = 0;
+        if (_pair != address(0)) {
+            _totalSupply = erc20(_pair).totalSupply();
+            (reserveA, reserveB) = getReserves(tokenA, tokenB, stable);
+        }
+        if (reserveA == 0 && reserveB == 0) {
+            (amountA, amountB) = (amountADesired, amountBDesired);
+            liquidity = Math.sqrt(amountA * amountB) - MINIMUM_LIQUIDITY;
+        } else {
+
+            uint amountBOptimal = quote(amountADesired, reserveA, reserveB);
+            if (amountBOptimal <= amountBDesired) {
+                (amountA, amountB) = (amountADesired, amountBOptimal);
+                liquidity = Math.min(amountA * _totalSupply / reserveA, amountB * _totalSupply / reserveB);
+            } else {
+                uint amountAOptimal = quote(amountBDesired, reserveB, reserveA);
+                (amountA, amountB) = (amountAOptimal, amountBDesired);
+                liquidity = Math.min(amountA * _totalSupply / reserveA, amountB * _totalSupply / reserveB);
+            }
+        }
+    }
+
+    function quoteRemoveLiquidity(
+        address tokenA,
+        address tokenB,
+        bool stable,
+        uint liquidity
+    ) external view returns (uint amountA, uint amountB) {
+        // create the pair if it doesn't exist yet
+        address _pair = IBaseV1Factory(factory).getPair(tokenA, tokenB, stable);
+
+        if (_pair == address(0)) {
+            return (0,0);
+        }
+
+        (uint reserveA, uint reserveB) = getReserves(tokenA, tokenB, stable);
+        uint _totalSupply = erc20(_pair).totalSupply();
+
+        amountA = liquidity * reserveA / _totalSupply; // using balances ensures pro-rata distribution
+        amountB = liquidity * reserveB / _totalSupply; // using balances ensures pro-rata distribution
+
     }
 
     function _addLiquidity(
