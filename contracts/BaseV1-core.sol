@@ -244,21 +244,25 @@ contract BaseV1Pair {
     mapping(address => uint) public claimable0;
     mapping(address => uint) public claimable1;
 
-    // claim accumulated but unclaimed fees (viewable via claimable0 and claimable1)
-    function claimFees() external {
-        claimFeesFor(msg.sender);
+    function tokens() external view returns (address, address) {
+        return (token0, token1);
     }
 
-    function claimFeesFor(address recipient) public lock {
+    // claim accumulated but unclaimed fees (viewable via claimable0 and claimable1)
+    function claimFees() external returns (uint claimed0, uint claimed1) {
+        return claimFeesFor(msg.sender);
+    }
+
+    function claimFeesFor(address recipient) public lock returns (uint claimed0, uint claimed1) {
         _updateFor(recipient);
 
-        uint _claimable0 = claimable0[recipient];
-        uint _claimable1 = claimable1[recipient];
+        claimed0 = claimable0[recipient];
+        claimed1 = claimable1[recipient];
 
         claimable0[recipient] = 0;
         claimable1[recipient] = 0;
 
-        BaseV1Fees(fees).claimFeesFor(recipient, _claimable0, _claimable1);
+        BaseV1Fees(fees).claimFeesFor(recipient, claimed0, claimed1);
     }
 
     // this function MUST be called on any balance changes, otherwise can be used to infinitely claim fees

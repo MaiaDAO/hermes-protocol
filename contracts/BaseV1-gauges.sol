@@ -31,18 +31,24 @@ interface IBaseV1Factory {
     function isPair(address) external view returns (bool);
 }
 
+interface IBaseV1Core {
+    function claimFees() external returns (uint, uint);
+    function tokens() external returns (address, address);
+}
+
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
 // Nuance: getReward must be called at least once for tokens other than incentive[0] to start accrueing rewards
 contract Gauge {
 
     address public immutable stake; // the LP token that needs to be staked for rewards
-    address immutable _ve; // the ve token used for gauges
+    address internal immutable _ve; // the ve token used for gauges
+    address internal immutable bribe;
 
     uint internal derivedSupply;
     mapping(address => uint) internal derivedBalances;
 
-    uint constant DURATION = 7 days; // rewards are released over 7 days
-    uint constant PRECISION = 10 ** 18;
+    uint internal constant DURATION = 7 days; // rewards are released over 7 days
+    uint internal constant PRECISION = 10 ** 18;
 
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
@@ -58,7 +64,16 @@ contract Gauge {
     mapping(address => uint) public balanceOf;
 
     address[] public rewards;
-    mapping(address => bool) public isReward;
+    mapping(address => bool) internal isReward;
+
+    function claimFees() external returns (uint claimed0, uint claimed1) {
+        (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
+        (address _token0, address _token1) = IBaseV1Core(stake).tokens();
+        _safeApprove(_token0, bribe, claimed0);
+        _safeApprove(_token1, bribe, claimed1);
+        Bribe(bribe).notifyRewardAmount(_token0, claimed0);
+        Bribe(bribe).notifyRewardAmount(_token1, claimed1);
+    }
 
     /// @notice A checkpoint for marking balance
    struct Checkpoint {
@@ -79,22 +94,22 @@ contract Gauge {
  }
 
    /// @notice A record of balance checkpoints for each account, by index
-   mapping (address => mapping (uint => Checkpoint)) public checkpoints;
+   mapping (address => mapping (uint => Checkpoint)) internal checkpoints;
 
    /// @notice The number of checkpoints for each account
-   mapping (address => uint) public numCheckpoints;
+   mapping (address => uint) internal numCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
+   mapping (uint => SupplyCheckpoint) internal supplyCheckpoints;
 
    /// @notice The number of checkpoints
-   uint public supplyNumCheckpoints;
+   uint internal supplyNumCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
+   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) internal rewardPerTokenCheckpoints;
 
    /// @notice The number of checkpoints for each token
-   mapping (address => uint) public rewardPerTokenNumCheckpoints;
+   mapping (address => uint) internal rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -105,10 +120,11 @@ contract Gauge {
         _unlocked = 1;
     }
 
-    constructor(address _stake) {
+    constructor(address _stake, address _bribe) {
         stake = _stake;
         address __ve = BaseV1Gauges(msg.sender)._ve();
         _ve = __ve;
+        bribe = _bribe;
     }
 
     /**
@@ -118,7 +134,7 @@ contract Gauge {
      * @param timestamp The timestamp to get the balance at
      * @return The balance the account had as of the given block
      */
-    function getPriorBalanceIndex(address account, uint timestamp) public view returns (uint) {
+    function _getPriorBalanceIndex(address account, uint timestamp) internal view returns (uint) {
         uint nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
             return 0;
@@ -150,7 +166,7 @@ contract Gauge {
         return lower;
     }
 
-    function getPriorSupplyIndex(uint timestamp) public view returns (uint) {
+    function _getPriorSupplyIndex(uint timestamp) internal view returns (uint) {
         uint nCheckpoints = supplyNumCheckpoints;
         if (nCheckpoints == 0) {
             return 0;
@@ -182,7 +198,7 @@ contract Gauge {
         return lower;
     }
 
-    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
+    function _getPriorRewardPerToken(address token, uint timestamp) internal view returns (uint, uint) {
         uint nCheckpoints = rewardPerTokenNumCheckpoints[token];
         if (nCheckpoints == 0) {
             return (0,0);
@@ -258,11 +274,6 @@ contract Gauge {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    // total amount of rewards returned for the 7 day duration
-    function getRewardForDuration(address token) external view returns (uint) {
-        return rewardRate[token] * DURATION;
-    }
-
     function getReward(address token) external lock {
       uint _reward = earned(token, msg.sender);
       lastEarn[token][msg.sender] = block.timestamp;
@@ -279,14 +290,14 @@ contract Gauge {
     }
 
 
-    function rewardPerToken(address token) public view returns (uint) {
+    function rewardPerToken(address token) internal view returns (uint) {
         if (derivedSupply == 0) {
             return rewardPerTokenStored[token];
         }
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / derivedSupply);
     }
 
-    function derivedBalance(address account) public view returns (uint) {
+    function derivedBalance(address account) internal view returns (uint) {
         uint _tokenId = tokenIds[account];
         uint _balance = balanceOf[account];
         uint _derived = _balance * 40 / 100;
@@ -298,7 +309,7 @@ contract Gauge {
         return Math.min(_derived + _adjusted, _balance);
     }
 
-    function updateRewardPerToken(address token) public returns (uint) {
+    function updateRewardPerToken(address token) internal returns (uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
@@ -306,7 +317,7 @@ contract Gauge {
             return reward;
         }
 
-        uint _startIndex = getPriorSupplyIndex(_startTimestamp);
+        uint _startIndex = _getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = supplyNumCheckpoints-1;
         uint _rewardRate = rewardRate[token];
 
@@ -342,7 +353,7 @@ contract Gauge {
             return 0;
         }
 
-        uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
+        uint _startIndex = _getPriorBalanceIndex(account, _startTimestamp);
         uint _endIndex = numCheckpoints[account]-1;
 
         uint reward = 0;
@@ -351,8 +362,8 @@ contract Gauge {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
                 Checkpoint memory cp0 = checkpoints[account][i];
                 Checkpoint memory cp1 = checkpoints[account][i+1];
-                (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
-                (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
+                (uint _rewardPerTokenStored0,) = _getPriorRewardPerToken(token, cp0.timestamp);
+                (uint _rewardPerTokenStored1,) = _getPriorRewardPerToken(token, cp1.timestamp);
                 if (_rewardPerTokenStored0 > 0) {
                   reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
                 }
@@ -360,7 +371,7 @@ contract Gauge {
         }
 
         Checkpoint memory cp = checkpoints[account][_endIndex];
-        (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
+        (uint _rewardPerTokenStored,) = _getPriorRewardPerToken(token, cp.timestamp);
         if (_rewardPerTokenStored > 0) {
             reward += cp.balanceOf * (rewardPerToken(token) - _rewardPerTokenStored / PRECISION);
         }
@@ -457,23 +468,29 @@ contract Gauge {
             token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
+
+    function _safeApprove(address token, address spender, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.approve.selector, spender, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
+    }
 }
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with BaseV1Gauges.vote())
 // Nuance: users must call updateReward after they voted for a given bribe
 contract Bribe {
 
-    address immutable factory; // only factory can modify balances (since it only happens on vote())
-    address immutable _ve;
+    address internal immutable factory; // only factory can modify balances (since it only happens on vote())
+    address internal immutable _ve;
 
-    uint constant DURATION = 7 days; // rewards are released over 7 days
-    uint constant PRECISION = 10 ** 18;
+    uint internal constant DURATION = 7 days; // rewards are released over 7 days
+    uint internal constant PRECISION = 10 ** 18;
 
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
     mapping(address => uint) public periodFinish;
-    mapping(address => uint) public lastUpdateTime;
-    mapping(address => uint) public rewardPerTokenStored;
+    mapping(address => uint) internal lastUpdateTime;
+    mapping(address => uint) internal rewardPerTokenStored;
 
     mapping(address => mapping(uint => uint)) internal lastEarn;
 
@@ -502,22 +519,22 @@ contract Bribe {
  }
 
    /// @notice A record of balance checkpoints for each account, by index
-   mapping (uint => mapping (uint => Checkpoint)) public checkpoints;
+   mapping (uint => mapping (uint => Checkpoint)) internal checkpoints;
 
    /// @notice The number of checkpoints for each account
-   mapping (uint => uint) public numCheckpoints;
+   mapping (uint => uint) internal numCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
+   mapping (uint => SupplyCheckpoint) internal supplyCheckpoints;
 
    /// @notice The number of checkpoints
-   uint public supplyNumCheckpoints;
+   uint internal supplyNumCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
+   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) internal rewardPerTokenCheckpoints;
 
    /// @notice The number of checkpoints for each token
-   mapping (address => uint) public rewardPerTokenNumCheckpoints;
+   mapping (address => uint) internal rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -535,7 +552,7 @@ contract Bribe {
      * @param timestamp The timestamp to get the balance at
      * @return The balance the account had as of the given block
      */
-    function getPriorBalanceIndex(uint tokenId, uint timestamp) public view returns (uint) {
+    function getPriorBalanceIndex(uint tokenId, uint timestamp) internal view returns (uint) {
         uint nCheckpoints = numCheckpoints[tokenId];
         if (nCheckpoints == 0) {
             return 0;
@@ -567,7 +584,7 @@ contract Bribe {
         return lower;
     }
 
-    function getPriorSupplyIndex(uint timestamp) public view returns (uint) {
+    function getPriorSupplyIndex(uint timestamp) internal view returns (uint) {
         uint nCheckpoints = supplyNumCheckpoints;
         if (nCheckpoints == 0) {
             return 0;
@@ -599,7 +616,7 @@ contract Bribe {
         return lower;
     }
 
-    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
+    function getPriorRewardPerToken(address token, uint timestamp) internal view returns (uint, uint) {
         uint nCheckpoints = rewardPerTokenNumCheckpoints[token];
         if (nCheckpoints == 0) {
             return (0,0);
@@ -675,11 +692,6 @@ contract Bribe {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    // total amount of rewards returned for the 7 day duration
-    function getRewardForDuration(address token) external view returns (uint) {
-        return rewardRate[token] * DURATION;
-    }
-
     // allows a user to claim rewards for a given token
     function getReward(uint tokenId, address token) public lock  {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
@@ -693,14 +705,14 @@ contract Bribe {
         _ve = BaseV1Gauges(msg.sender)._ve();
     }
 
-    function rewardPerToken(address token) public view returns (uint) {
+    function rewardPerToken(address token) internal view returns (uint) {
         if (totalSupply == 0) {
             return rewardPerTokenStored[token];
         }
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / totalSupply);
     }
 
-    function updateRewardPerToken(address token) public returns (uint) {
+    function updateRewardPerToken(address token) internal returns (uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
@@ -941,8 +953,8 @@ contract BaseV1Gauges {
     function createGauge(address _pool) external returns (address) {
         require(gauges[_pool] == address(0x0), "exists");
         require(IBaseV1Factory(factory).isPair(_pool), "!_pool");
-        address _gauge = address(new Gauge(_pool));
         address _bribe = address(new Bribe());
+        address _gauge = address(new Gauge(_pool, _bribe));
         bribes[_gauge] = _bribe;
         gauges[_pool] = _gauge;
         poolForGauge[_gauge] = _pool;
