@@ -63,7 +63,6 @@ describe("BaseV1Factory", function () {
     const BaseV1Factory = await ethers.getContractFactory("BaseV1Factory");
     factory = await BaseV1Factory.deploy();
     await factory.deployed();
-    console.log(await factory.pairCodeHash());
 
     expect(await factory.allPairsLength()).to.equal(0);
   });
@@ -137,15 +136,17 @@ describe("BaseV1Factory", function () {
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
   });
 
-  it("deploy BaseV1Factory and test pair length", async function () {
+  it("deploy BaseV1Voter", async function () {
+    const BaseV1GaugeFactory = await ethers.getContractFactory("BaseV1GaugeFactory");
+    gauges_factory = await BaseV1GaugeFactory.deploy();
     const BaseV1GaugeLibrary = await ethers.getContractFactory("BaseV1GaugeLibrary");
     library = await BaseV1GaugeLibrary.deploy();
-    const BaseV1Gauges = await ethers.getContractFactory("BaseV1Gauges", {
+    const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter", {
       libraries: {
         BaseV1GaugeLibrary: library.address
       }
     });
-    gauge_factory = await BaseV1Gauges.deploy(ve.address, factory.address);
+    gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address);
     await gauge_factory.deployed();
 
     expect(await gauge_factory.length()).to.equal(0);
@@ -171,11 +172,7 @@ describe("BaseV1Factory", function () {
     const gauge_address = await gauge_factory.gauges(pair.address);
     const bribe_address = await gauge_factory.bribes(gauge_address);
 
-    const Gauge = await ethers.getContractFactory("Gauge", {
-      libraries: {
-        BaseV1GaugeLibrary: library.address
-      }
-    });
+    const Gauge = await ethers.getContractFactory("Gauge");
     gauge = await Gauge.attach(gauge_address);
 
     const Bribe = await ethers.getContractFactory("Bribe", {
