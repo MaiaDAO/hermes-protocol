@@ -798,13 +798,13 @@ def deposit_for(_tokenId: uint256, _value: uint256):
 
 @external
 @nonreentrant('lock')
-def create_lock(_value: uint256, _unlock_time: uint256) -> uint256:
+def create_lock(_value: uint256, _lock_duration: uint256) -> uint256:
     """
-    @notice Deposit `_value` tokens for `msg.sender` and lock until `_unlock_time`
+    @notice Deposit `_value` tokens for `msg.sender` and lock for `_lock_duration`
     @param _value Amount to deposit
-    @param _unlock_time Epoch time when tokens unlock, rounded down to whole weeks
+    @param _lock_duration Number of seconds to lock tokens for (rounded down to nearest week)
     """
-    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
+    unlock_time: uint256 = (block.timestamp + _lock_duration) / WEEK * WEEK  # Locktime is rounded down to weeks
 
     assert _value > 0  # dev: need non-zero value
     assert unlock_time > block.timestamp, "Can only lock until time in the future"
@@ -842,15 +842,15 @@ def increase_amount(_tokenId: uint256, _value: uint256):
 
 @external
 @nonreentrant('lock')
-def increase_unlock_time(_tokenId: uint256, _unlock_time: uint256):
+def increase_unlock_time(_tokenId: uint256, _lock_duration: uint256):
     """
-    @notice Extend the unlock time for `_tokenId` to `_unlock_time`
-    @param _unlock_time New epoch time for unlocking
+    @notice Extend the unlock time for `_tokenId`
+    @param _lock_duration New number of seconds until tokens unlock
     """
     assert self._isApprovedOrOwner(msg.sender, _tokenId)
 
     _locked: LockedBalance = self.locked[_tokenId]
-    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
+    unlock_time: uint256 = (block.timestamp + _lock_duration) / WEEK * WEEK  # Locktime is rounded down to weeks
 
     assert _locked.end > block.timestamp, "Lock expired"
     assert _locked.amount > 0, "Nothing is locked"
