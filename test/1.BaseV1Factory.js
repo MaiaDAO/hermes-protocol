@@ -69,7 +69,7 @@ describe("BaseV1Factory", function () {
 
   it("deploy BaseV1Router and test factory address", async function () {
     const BaseV1Router = await ethers.getContractFactory("BaseV1Router01");
-    router = await BaseV1Router.deploy(factory.address);
+    router = await BaseV1Router.deploy(factory.address, owner.address);
     await router.deployed();
 
     expect(await router.factory()).to.equal(factory.address);

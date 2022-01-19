@@ -66,7 +66,7 @@ contract BaseV1Router01 {
     }
 
     address public immutable factory;
-    IWFTM public immutable wftm = IWFTM(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
+    IWFTM public immutable wftm;
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
     bytes32 immutable pairCodeHash;
 
@@ -75,9 +75,10 @@ contract BaseV1Router01 {
         _;
     }
 
-    constructor(address _factory) {
+    constructor(address _factory, address _wftm) {
         factory = _factory;
         pairCodeHash = IBaseV1Factory(_factory).pairCodeHash();
+        wftm = IWFTM(_wftm);
     }
 
     receive() external payable {
