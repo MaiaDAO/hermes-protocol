@@ -228,10 +228,6 @@ describe("BaseV1Factory", function () {
     await gauge_factory.distro();
   });
 
-  it("minter mint", async function () {
-    await minter.update_period();
-  });
-
   it("bribe claim rewards", async function () {
     console.log(await bribe.rewardPerToken(ve_underlying.address));
     console.log(await ve_underlying.balanceOf(bribe.address));
@@ -244,32 +240,86 @@ describe("BaseV1Factory", function () {
     await bribe.getReward(1, [ve_underlying.address]);
   });
 
+  it("minter mint", async function () {
+    await minter.update_period();
+    await gauge_factory.distro();
+  });
+
   it("gauge claim rewards", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
     console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
-    await bribe.getReward(owner.address, [ve_underlying.address]);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+  });
+
+  it("gauge claim rewards (after expiry)", async function () {
+    const pair_1000 = ethers.BigNumber.from("1000000000");
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await network.provider.send("evm_increaseTime", [604800])
+    await network.provider.send("evm_mine")
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
   });
 

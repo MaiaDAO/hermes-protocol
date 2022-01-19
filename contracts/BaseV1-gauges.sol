@@ -277,7 +277,7 @@ contract Gauge {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    function getReward(address[] memory tokens, address account) public lock {
+    function getReward(address account, address[] memory tokens) public lock {
       for (uint i = 0; i < tokens.length; i++) {
           uint _reward = earned(tokens[i], account);
           lastEarn[tokens[i]][account] = block.timestamp;
@@ -370,9 +370,7 @@ contract Gauge {
                 Checkpoint memory cp1 = checkpoints[account][i+1];
                 (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
                 (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
-                if (_rewardPerTokenStored0 > 0) {
-                  reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
-                }
+                reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
             }
         }
 
