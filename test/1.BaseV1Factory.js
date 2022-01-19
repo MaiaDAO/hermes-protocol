@@ -240,6 +240,10 @@ describe("BaseV1Factory", function () {
     await bribe.getReward(1, [ve_underlying.address]);
   });
 
+  it("distribute fees", async function () {
+    await gauge_factory.distributeFees([gauge.address]);
+  });
+
   it("minter mint", async function () {
     await minter.update_period();
     await gauge_factory.distro();

@@ -42,6 +42,7 @@ interface IBaseV1GaugeFactory {
 interface IGauge {
     function notifyRewardAmount(address token, uint amount) external;
     function getReward(address account, address[] memory tokens) external;
+    function claimFees() external returns (uint claimed0, uint claimed1);
 }
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with BaseV1Gauges.vote())
@@ -605,6 +606,12 @@ contract BaseV1Voter {
     function claimBribes(address[] memory _bribes, address[][] memory _tokens, uint _tokenId) external {
         for (uint i = 0; i < _bribes.length; i ++) {
             Bribe(_bribes[i]).getRewardForOwner(_tokenId, _tokens[i]);
+        }
+    }
+
+    function distributeFees(address[] memory _gauges) external {
+        for (uint i = 0; i < _gauges.length; i ++) {
+            IGauge(_gauges[i]).claimFees();
         }
     }
 
