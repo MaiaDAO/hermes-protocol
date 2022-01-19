@@ -240,8 +240,9 @@ describe("BaseV1Factory", function () {
     await bribe.getReward(1, [ve_underlying.address]);
   });
 
-  it("distribute fees", async function () {
+  it("distribute and claim fees", async function () {
     await gauge_factory.distributeFees([gauge.address]);
+    await bribe.getReward(1, [mim.address, ust.address]);
   });
 
   it("minter mint", async function () {
