@@ -353,6 +353,27 @@ contract BaseV1Router01 {
         }
     }
 
+    function swapExactTokensForTokensSimple(
+        uint amountIn,
+        uint amountOutMin,
+        address tokenFrom,
+        address tokenTo,
+        bool stable,
+        address to,
+        uint deadline
+    ) external ensure(deadline) returns (uint[] memory amounts) {
+        route[] memory routes = new route[](1);
+        routes[0].from = tokenFrom;
+        routes[0].to = tokenTo;
+        routes[0].stable = stable;
+        amounts = getAmountsOut(amountIn, routes);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'BaseV1Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        _safeTransferFrom(
+            routes[0].from, msg.sender, pairFor(routes[0].from, routes[0].to, routes[0].stable), amounts[0]
+        );
+        _swap(amounts, routes, to);
+    }
+
     function swapExactTokensForTokens(
         uint amountIn,
         uint amountOutMin,

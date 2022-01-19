@@ -41,6 +41,7 @@ interface IBaseV1GaugeFactory {
 
 interface IGauge {
     function notifyRewardAmount(address token, uint amount) external;
+    function getReward(address account, address[] memory tokens) external;
 }
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with BaseV1Gauges.vote())
@@ -270,6 +271,18 @@ contract Bribe {
             if (_reward > 0) _safeTransfer(tokens[i], msg.sender, _reward);
         }
     }
+
+    // allows a user to claim rewards for a given token
+    function getRewardForOwner(uint tokenId, address[] memory tokens) public lock  {
+        address _owner = ve(_ve).ownerOf(tokenId);
+        for (uint i = 0; i < tokens.length; i++) {
+            uint _reward = earned(tokens[i], tokenId);
+            lastEarn[tokens[i]][tokenId] = block.timestamp;
+            userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerToken(tokens[i]);
+            if (_reward > 0) _safeTransfer(tokens[i], _owner, _reward);
+        }
+    }
+
 
     constructor() {
         factory = msg.sender;
@@ -580,6 +593,18 @@ contract BaseV1Voter {
             }
         } else {
             supplyIndex[_gauge] = index; // new users are set to the default global state
+        }
+    }
+
+    function claimRewards(address[] memory _gauges, address[][] memory _tokens, address account) external {
+        for (uint i = 0; i < _gauges.length; i ++) {
+            IGauge(_gauges[i]).getReward(account, _tokens[i]);
+        }
+    }
+
+    function claimBribes(address[] memory _bribes, address[][] memory _tokens, uint _tokenId) external {
+        for (uint i = 0; i < _bribes.length; i ++) {
+            Bribe(_bribes[i]).getRewardForOwner(_tokenId, _tokens[i]);
         }
     }
 
