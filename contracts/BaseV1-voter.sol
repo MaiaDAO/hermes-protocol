@@ -46,7 +46,6 @@ interface IGauge {
 }
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with BaseV1Gauges.vote())
-// Nuance: users must call updateReward after they voted for a given bribe
 contract Bribe {
 
     address public immutable factory; // only factory can modify balances (since it only happens on vote())

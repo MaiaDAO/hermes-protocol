@@ -40,7 +40,6 @@ interface IBribe {
 }
 
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
-// Nuance: getReward must be called at least once for tokens other than incentive[0] to start accrueing rewards
 contract Gauge {
 
     address public immutable stake; // the LP token that needs to be staked for rewards
