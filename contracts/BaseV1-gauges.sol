@@ -44,23 +44,23 @@ interface IBribe {
 contract Gauge {
 
     address public immutable stake; // the LP token that needs to be staked for rewards
-    address internal immutable _ve; // the ve token used for gauges
-    address internal immutable bribe;
+    address public immutable _ve; // the ve token used for gauges
+    address public immutable bribe;
 
-    uint internal derivedSupply;
-    mapping(address => uint) internal derivedBalances;
+    uint public derivedSupply;
+    mapping(address => uint) public derivedBalances;
 
-    uint internal constant DURATION = 7 days; // rewards are released over 7 days
-    uint internal constant PRECISION = 10 ** 18;
+    uint public constant DURATION = 7 days; // rewards are released over 7 days
+    uint public constant PRECISION = 10 ** 18;
 
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
     mapping(address => uint) public periodFinish;
     mapping(address => uint) public lastUpdateTime;
-    mapping(address => uint) internal rewardPerTokenStored;
+    mapping(address => uint) public rewardPerTokenStored;
 
-    mapping(address => mapping(address => uint)) internal lastEarn;
-    mapping(address => mapping(address => uint)) internal userRewardPerTokenStored;
+    mapping(address => mapping(address => uint)) public lastEarn;
+    mapping(address => mapping(address => uint)) public userRewardPerTokenStored;
 
     mapping(address => uint) public tokenIds;
 
@@ -68,7 +68,7 @@ contract Gauge {
     mapping(address => uint) public balanceOf;
 
     address[] public rewards;
-    mapping(address => bool) internal isReward;
+    mapping(address => bool) public isReward;
 
     function claimFees() external returns (uint claimed0, uint claimed1) {
         (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
@@ -98,22 +98,22 @@ contract Gauge {
  }
 
    /// @notice A record of balance checkpoints for each account, by index
-   mapping (address => mapping (uint => Checkpoint)) internal checkpoints;
+   mapping (address => mapping (uint => Checkpoint)) public checkpoints;
 
    /// @notice The number of checkpoints for each account
-   mapping (address => uint) internal numCheckpoints;
+   mapping (address => uint) public numCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (uint => SupplyCheckpoint) internal supplyCheckpoints;
+   mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
 
    /// @notice The number of checkpoints
-   uint internal supplyNumCheckpoints;
+   uint public supplyNumCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) internal rewardPerTokenCheckpoints;
+   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
 
    /// @notice The number of checkpoints for each token
-   mapping (address => uint) internal rewardPerTokenNumCheckpoints;
+   mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -137,7 +137,7 @@ contract Gauge {
      * @param timestamp The timestamp to get the balance at
      * @return The balance the account had as of the given block
      */
-    function _getPriorBalanceIndex(address account, uint timestamp) internal view returns (uint) {
+    function getPriorBalanceIndex(address account, uint timestamp) public view returns (uint) {
         uint nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
             return 0;
@@ -169,7 +169,7 @@ contract Gauge {
         return lower;
     }
 
-    function _getPriorSupplyIndex(uint timestamp) internal view returns (uint) {
+    function getPriorSupplyIndex(uint timestamp) public view returns (uint) {
         uint nCheckpoints = supplyNumCheckpoints;
         if (nCheckpoints == 0) {
             return 0;
@@ -201,7 +201,7 @@ contract Gauge {
         return lower;
     }
 
-    function _getPriorRewardPerToken(address token, uint timestamp) internal view returns (uint, uint) {
+    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
         uint nCheckpoints = rewardPerTokenNumCheckpoints[token];
         if (nCheckpoints == 0) {
             return (0,0);
@@ -296,14 +296,14 @@ contract Gauge {
     }
 
 
-    function rewardPerToken(address token) internal view returns (uint) {
+    function rewardPerToken(address token) public view returns (uint) {
         if (derivedSupply == 0) {
             return rewardPerTokenStored[token];
         }
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / derivedSupply);
     }
 
-    function derivedBalance(address account) internal view returns (uint) {
+    function derivedBalance(address account) public view returns (uint) {
         uint _tokenId = tokenIds[account];
         uint _balance = balanceOf[account];
         uint _derived = _balance * 40 / 100;
@@ -315,7 +315,7 @@ contract Gauge {
         return Math.min(_derived + _adjusted, _balance);
     }
 
-    function updateRewardPerToken(address token) internal returns (uint) {
+    function _updateRewardPerToken(address token) internal returns (uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
@@ -323,7 +323,7 @@ contract Gauge {
             return reward;
         }
 
-        uint _startIndex = _getPriorSupplyIndex(_startTimestamp);
+        uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = supplyNumCheckpoints-1;
         uint _rewardRate = rewardRate[token];
 
@@ -359,7 +359,7 @@ contract Gauge {
             return 0;
         }
 
-        uint _startIndex = _getPriorBalanceIndex(account, _startTimestamp);
+        uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
         uint _endIndex = numCheckpoints[account]-1;
 
         uint reward = 0;
@@ -368,8 +368,8 @@ contract Gauge {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
                 Checkpoint memory cp0 = checkpoints[account][i];
                 Checkpoint memory cp1 = checkpoints[account][i+1];
-                (uint _rewardPerTokenStored0,) = _getPriorRewardPerToken(token, cp0.timestamp);
-                (uint _rewardPerTokenStored1,) = _getPriorRewardPerToken(token, cp1.timestamp);
+                (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
+                (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
                 if (_rewardPerTokenStored0 > 0) {
                   reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
                 }
@@ -377,13 +377,13 @@ contract Gauge {
         }
 
         Checkpoint memory cp = checkpoints[account][_endIndex];
-        (uint _rewardPerTokenStored,) = _getPriorRewardPerToken(token, cp.timestamp);
+        (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
         reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][account])) / PRECISION;
 
         return reward;
     }
 
-    function deposit(uint amount, uint tokenId) external lock {
+    function deposit(uint amount, uint tokenId) public lock {
         tokenIds[msg.sender] = tokenId;
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
@@ -416,7 +416,7 @@ contract Gauge {
     }
 
     function notifyRewardAmount(address token, uint amount) external lock {
-        rewardPerTokenStored[token] = updateRewardPerToken(token);
+        rewardPerTokenStored[token] = _updateRewardPerToken(token);
         lastUpdateTime[token] = block.timestamp;
         _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 

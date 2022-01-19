@@ -43,48 +43,27 @@ interface IGauge {
     function notifyRewardAmount(address token, uint amount) external;
 }
 
-library BaseV1GaugeLibrary {
-
-  function safeTransfer(address token, address to, uint256 value) external {
-      (bool success, bytes memory data) =
-          token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
-      require(success && (data.length == 0 || abi.decode(data, (bool))));
-  }
-
-  function safeTransferFrom(address token, address from, address to, uint256 value) external {
-      (bool success, bytes memory data) =
-          token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-      require(success && (data.length == 0 || abi.decode(data, (bool))));
-  }
-
-  function safeApprove(address token, address spender, uint256 value) external {
-      (bool success, bytes memory data) =
-          token.call(abi.encodeWithSelector(erc20.approve.selector, spender, value));
-      require(success && (data.length == 0 || abi.decode(data, (bool))));
-  }
-}
-
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with BaseV1Gauges.vote())
 // Nuance: users must call updateReward after they voted for a given bribe
 contract Bribe {
 
-    address internal immutable factory; // only factory can modify balances (since it only happens on vote())
-    address internal immutable _ve;
+    address public immutable factory; // only factory can modify balances (since it only happens on vote())
+    address public immutable _ve;
 
-    uint internal constant DURATION = 7 days; // rewards are released over 7 days
-    uint internal constant PRECISION = 10 ** 18;
+    uint public constant DURATION = 7 days; // rewards are released over 7 days
+    uint public constant PRECISION = 10 ** 18;
 
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
     mapping(address => uint) public periodFinish;
-    mapping(address => uint) internal lastUpdateTime;
-    mapping(address => uint) internal rewardPerTokenStored;
+    mapping(address => uint) public lastUpdateTime;
+    mapping(address => uint) public rewardPerTokenStored;
 
-    mapping(address => mapping(uint => uint)) internal lastEarn;
-    mapping(address => mapping(uint => uint)) internal userRewardPerTokenStored;
+    mapping(address => mapping(uint => uint)) public lastEarn;
+    mapping(address => mapping(uint => uint)) public userRewardPerTokenStored;
 
     address[] public rewards;
-    mapping(address => bool) internal isReward;
+    mapping(address => bool) public isReward;
 
     uint public totalSupply;
     mapping(uint => uint) public balanceOf;
@@ -108,22 +87,22 @@ contract Bribe {
  }
 
    /// @notice A record of balance checkpoints for each account, by index
-   mapping (uint => mapping (uint => Checkpoint)) internal checkpoints;
+   mapping (uint => mapping (uint => Checkpoint)) public checkpoints;
 
    /// @notice The number of checkpoints for each account
-   mapping (uint => uint) internal numCheckpoints;
+   mapping (uint => uint) public numCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (uint => SupplyCheckpoint) internal supplyCheckpoints;
+   mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
 
    /// @notice The number of checkpoints
-   uint internal supplyNumCheckpoints;
+   uint public supplyNumCheckpoints;
 
    /// @notice A record of balance checkpoints for each token, by index
-   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) internal rewardPerTokenCheckpoints;
+   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
 
    /// @notice The number of checkpoints for each token
-   mapping (address => uint) internal rewardPerTokenNumCheckpoints;
+   mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -141,7 +120,7 @@ contract Bribe {
      * @param timestamp The timestamp to get the balance at
      * @return The balance the account had as of the given block
      */
-    function getPriorBalanceIndex(uint tokenId, uint timestamp) internal view returns (uint) {
+    function getPriorBalanceIndex(uint tokenId, uint timestamp) public view returns (uint) {
         uint nCheckpoints = numCheckpoints[tokenId];
         if (nCheckpoints == 0) {
             return 0;
@@ -173,7 +152,7 @@ contract Bribe {
         return lower;
     }
 
-    function getPriorSupplyIndex(uint timestamp) internal view returns (uint) {
+    function getPriorSupplyIndex(uint timestamp) public view returns (uint) {
         uint nCheckpoints = supplyNumCheckpoints;
         if (nCheckpoints == 0) {
             return 0;
@@ -205,7 +184,7 @@ contract Bribe {
         return lower;
     }
 
-    function getPriorRewardPerToken(address token, uint timestamp) internal view returns (uint, uint) {
+    function getPriorRewardPerToken(address token, uint timestamp) public view returns (uint, uint) {
         uint nCheckpoints = rewardPerTokenNumCheckpoints[token];
         if (nCheckpoints == 0) {
             return (0,0);
@@ -288,7 +267,7 @@ contract Bribe {
             uint _reward = earned(tokens[i], tokenId);
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerToken(tokens[i]);
-            if (_reward > 0) BaseV1GaugeLibrary.safeTransfer(tokens[i], msg.sender, _reward);
+            if (_reward > 0) _safeTransfer(tokens[i], msg.sender, _reward);
         }
     }
 
@@ -304,7 +283,7 @@ contract Bribe {
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / totalSupply);
     }
 
-    function updateRewardPerToken(address token) internal returns (uint) {
+    function _updateRewardPerToken(address token) internal returns (uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
@@ -395,17 +374,18 @@ contract Bribe {
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
     function notifyRewardAmount(address token, uint amount) external lock {
-        rewardPerTokenStored[token] = updateRewardPerToken(token);
+        rewardPerTokenStored[token] = _updateRewardPerToken(token);
         lastUpdateTime[token] = block.timestamp;
+        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 
         if (block.timestamp >= periodFinish[token]) {
-            BaseV1GaugeLibrary.safeTransferFrom(token, msg.sender, address(this), amount);
+            _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = amount / DURATION;
         } else {
             uint _remaining = periodFinish[token] - block.timestamp;
             uint _left = _remaining * rewardRate[token];
             require(amount > _left);
-            BaseV1GaugeLibrary.safeTransferFrom(token, msg.sender, address(this), amount);
+            _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
         periodFinish[token] = block.timestamp + DURATION;
@@ -413,6 +393,18 @@ contract Bribe {
             isReward[token] = true;
             rewards.push(token);
         }
+    }
+
+    function _safeTransfer(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
+    }
+
+    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
 
@@ -549,7 +541,7 @@ contract BaseV1Voter {
 
     // Accrue fees on token0
     function notifyRewardAmount(uint amount) public lock {
-        BaseV1GaugeLibrary.safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
+        _safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
         uint256 _ratio = amount * 1e18 / totalWeight; // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
           index += _ratio;
@@ -644,5 +636,17 @@ contract BaseV1Voter {
               }
             }
         }
+    }
+
+    function _safeTransfer(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
+    }
+
+    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }

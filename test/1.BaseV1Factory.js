@@ -118,8 +118,8 @@ describe("BaseV1Factory", function () {
     const ust_1000 = ethers.BigNumber.from("100000000");
     const mim_1000 = ethers.BigNumber.from("100000000000000000000");
     const expected_2000 = ethers.BigNumber.from("2000000000");
-    await ust.approve(router.address, ethers.BigNumber.from("1000000000000"));
-    await mim.approve(router.address, ethers.BigNumber.from("1000000000000000000000000"));
+    await ust.approve(router.address, ust_1000);
+    await mim.approve(router.address, mim_1000);
     await router.addLiquidity(mim.address, ust.address, true, mim_1000, ust_1000, mim_1000, ust_1000, owner.address, Date.now());
   });
 
@@ -133,19 +133,14 @@ describe("BaseV1Factory", function () {
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
     const expected_output = await router.getAmountsOut(ust_1, [route]);
+    await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
   });
 
   it("deploy BaseV1Voter", async function () {
     const BaseV1GaugeFactory = await ethers.getContractFactory("BaseV1GaugeFactory");
     gauges_factory = await BaseV1GaugeFactory.deploy();
-    const BaseV1GaugeLibrary = await ethers.getContractFactory("BaseV1GaugeLibrary");
-    library = await BaseV1GaugeLibrary.deploy();
-    const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter", {
-      libraries: {
-        BaseV1GaugeLibrary: library.address
-      }
-    });
+    const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter");
     gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address);
     await gauge_factory.deployed();
 
@@ -175,11 +170,7 @@ describe("BaseV1Factory", function () {
     const Gauge = await ethers.getContractFactory("Gauge");
     gauge = await Gauge.attach(gauge_address);
 
-    const Bribe = await ethers.getContractFactory("Bribe", {
-      libraries: {
-        BaseV1GaugeLibrary: library.address
-      }
-    });
+    const Bribe = await ethers.getContractFactory("Bribe");
     bribe = await Bribe.attach(bribe_address);
 
     await pair.approve(gauge.address, pair_1000);
@@ -246,11 +237,40 @@ describe("BaseV1Factory", function () {
     console.log(await ve_underlying.balanceOf(bribe.address));
     console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
-    await network.provider.send("evm_increaseTime", [604800])
+    await network.provider.send("evm_increaseTime", [691200])
     await network.provider.send("evm_mine")
     console.log(await ve_underlying.balanceOf(bribe.address));
     console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
+  });
+
+  it("gauge claim rewards", async function () {
+    const pair_1000 = ethers.BigNumber.from("1000000000");
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, owner.address);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    await network.provider.send("evm_increaseTime", [604800])
+    await network.provider.send("evm_mine")
+    await bribe.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
   });
 
 });
