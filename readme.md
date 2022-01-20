@@ -71,7 +71,7 @@ Fees are not accrued in the base pair themselves, but are transfered to `BaseV1F
 
 Base V1 factory allows for the creation of `pools` via ```function createPair(address tokenA, address tokenB, bool stable) external returns (address pair)```
 
-Base V! factory uses an immutable pattern to create pairs, further reducing the gas costs involved in swaps
+Base V1 factory uses an immutable pattern to create pairs, further reducing the gas costs involved in swaps
 
 Anyone can create a pool permissionlessly.
 
