@@ -611,7 +611,7 @@ contract BaseV1Pair {
     function _get_y(uint x0, uint xy, uint y) internal pure returns (uint) {
         for (uint i = 0; i < 255; i++) {
           uint y_prev = y;
-          y = y - (_f(x0,xy,y)/_d(x0,y));
+          y = y - (_f(x0,xy,y)*1e18/_d(x0,y));
           if (y > y_prev) {
                 if (y - y_prev <= 1) {
                     return y;
@@ -648,7 +648,7 @@ contract BaseV1Pair {
           uint _y = y * 1e18 / decimals1;
           uint _a = (_x * _y) / 1e18;
           uint _b = ((_x * _x) / 1e18 + (_y * _y) / 1e18);
-          return _a * _b / 1e18 / 2;  // x3y+y3x >= k
+          return _a * _b / 1e18;  // x3y+y3x >= k
       } else {
           return x * y; // xy >= k
       }
