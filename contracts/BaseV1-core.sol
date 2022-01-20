@@ -198,7 +198,7 @@ contract BaseV1Pair {
 
     Observation[] public observations;
 
-    uint immutable decimals0;
+    uint  immutable decimals0;
     uint immutable decimals1;
 
     uint112 public reserve0;
@@ -215,6 +215,10 @@ contract BaseV1Pair {
     // this further allows LP holders to easily claim fees for tokens they have/staked
     uint public index0 = 0;
     uint public index1 = 0;
+
+    function metadata() external view returns (uint dec0, uint dec1, uint112 r0, uint112 r1, bool st, address t0, address t1) {
+        return (decimals0, decimals1, reserve0, reserve1, stable, token0, token1);
+    }
 
     // position assigned to each LP to track their current index0 & index1 vs the global position
     mapping(address => uint) public supplyIndex0;

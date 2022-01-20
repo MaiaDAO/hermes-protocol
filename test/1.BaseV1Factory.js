@@ -309,18 +309,27 @@ describe("BaseV1Factory", function () {
     console.log(await router.getAmountsOut(ust_1, [route]));
     console.log(await pair.getAmountOut(ust_1, ust.address));
 
+    metadata = await pair.metadata()
+    const roots = await ethers.getContractFactory("roots");
+    root = await roots.deploy(metadata.dec0, metadata.dec1, metadata.st, metadata.t0, metadata.t1);
+    await root.deployed();
+
+    console.log(await root.getAmountOutNewton(ust_1, ust.address, metadata.r0, metadata.r1));
+    console.log(await root.getAmountOutClosedForm(ust_1, ust.address, metadata.r0, metadata.r1));
+
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
     const expected_output = await router.getAmountsOut(ust_1, [route]);
     await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
     const fees = await pair.fees()
-    console.log(await ust.balanceOf(fees));
   });
 
   it("BaseV1Router01 pair2 getAmountsOut & swapExactTokensForTokens", async function () {
     const ust_1 = ethers.BigNumber.from("1000000");
     const route = {from:ust.address, to:mim.address, stable:false}
+
+
 
     console.log(await router.getAmountsOut(ust_1, [route]));
     console.log(await pair2.getAmountOut(ust_1, ust.address));
