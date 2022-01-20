@@ -45,6 +45,7 @@ contract Gauge {
     address public immutable stake; // the LP token that needs to be staked for rewards
     address public immutable _ve; // the ve token used for gauges
     address public immutable bribe;
+    address public immutable voter;
 
     uint public derivedSupply;
     mapping(address => uint) public derivedBalances;
@@ -123,10 +124,11 @@ contract Gauge {
         _unlocked = 1;
     }
 
-    constructor(address _stake, address _bribe, address  __ve) {
+    constructor(address _stake, address _bribe, address  __ve, address _voter) {
         stake = _stake;
         bribe = _bribe;
         _ve = __ve;
+        voter = _voter;
     }
 
     /**
@@ -277,6 +279,7 @@ contract Gauge {
     }
 
     function getReward(address account, address[] memory tokens) public lock {
+      require(msg.sender == account || msg.sender == voter);
       for (uint i = 0; i < tokens.length; i++) {
           uint _reward = earned(tokens[i], account);
           lastEarn[tokens[i]][account] = block.timestamp;
@@ -456,6 +459,6 @@ contract Gauge {
 
 contract BaseV1GaugeFactory {
     function createGauge(address _pool, address _bribe, address _ve) external returns (address) {
-        return address(new Gauge(_pool, _bribe, _ve));
+        return address(new Gauge(_pool, _bribe, _ve, msg.sender));
     }
 }
