@@ -1,19 +1,24 @@
-const xIn = 999900000000000000;
-const _x = 2000000000000000000;
-const _y = 2000000000000000000;
+const xIn = 1000000000000;
+const _x = 100000001000000000000000000;
+const _y = 100000001000000000000000000;
 
 yOut = get_y(xIn,_x,_y);
 
-const a = 100000207535506490044;
+const a = 100000001000000000000000000;
 
 console.log(a*a/1e18*a/1e18)
 
 
 function get_y(xIn, a, b) {
   x = xIn + a;
-  _c = (Math.sqrt(((27*(a**3)*b*(x**2)+27*a*(b**3)*(x**2))**2)+108*x**12)+27*(a**3)*b*(x**2)+27*a*(b**3)*(x**2));
-  c0 = 27*a**3*b*x**2+27*a*b**3*x**2;
+  a3 = a*a/1e18*a/1e18
+  x2 = x*x/1e18
+  b3 = b*b/1e18*b/1e18
+  c0 = 27*a3*b/1e18*x2/1e18+27*a*b3/1e18*x2/1e18;
+  console.log("c0",c0)
+  console.log("c0*c0",c0*c0)
   _c1 = (Math.sqrt(c0*c0+108*x**12)+c0)
+  console.log(_c1)
   c1 = Math.cbrt(_c1)
   b1 = (3*2**(1/3)*x)
   b1 = 3*Math.cbrt(2)*x

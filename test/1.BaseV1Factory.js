@@ -22,12 +22,14 @@ describe("BaseV1Factory", function () {
   let token;
   let ust;
   let mim;
+  let dai;
   let ve_underlying;
   let ve;
   let factory;
   let router;
   let pair;
   let pair2;
+  let pair3;
   let owner;
   let gauge_factory;
   let gauge;
@@ -42,7 +44,9 @@ describe("BaseV1Factory", function () {
     ust = await token.deploy('ust', 'ust', 6, owner.address);
     await ust.mint(owner.address, ethers.BigNumber.from("1000000000000000"));
     mim = await token.deploy('MIM', 'MIM', 18, owner.address);
-    await mim.mint(owner.address, ethers.BigNumber.from("1000000000000000000000"));
+    await mim.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000"));
+    dai = await token.deploy('DAI', 'DAI', 18, owner.address);
+    await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
     await ve_underlying.mint(owner.address, ethers.BigNumber.from("1000000000000000000000"));
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
@@ -79,13 +83,17 @@ describe("BaseV1Factory", function () {
   it("deploy pair via BaseV1Factory", async function () {
     const ust_1 = ethers.BigNumber.from("1000000");
     const mim_1 = ethers.BigNumber.from("1000000000000000000");
+    const dai_1 = ethers.BigNumber.from("1000000000000000000");
     await mim.approve(router.address, mim_1);
     await ust.approve(router.address, ust_1);
     await router.addLiquidity(mim.address, ust.address, true, mim_1, ust_1, 0, 0, owner.address, Date.now());
     await mim.approve(router.address, mim_1);
     await ust.approve(router.address, ust_1);
     await router.addLiquidity(mim.address, ust.address, false, mim_1, ust_1, 0, 0, owner.address, Date.now());
-    expect(await factory.allPairsLength()).to.equal(2);
+    await mim.approve(router.address, mim_1);
+    await dai.approve(router.address, dai_1);
+    await router.addLiquidity(mim.address, dai.address, true, mim_1, dai_1, 0, 0, owner.address, Date.now());
+    expect(await factory.allPairsLength()).to.equal(3);
   });
 
   it("confirm pair for mim-ust", async function () {
@@ -96,6 +104,8 @@ describe("BaseV1Factory", function () {
     pair = await BaseV1Pair.attach(address);
     const address2 = await factory.getPair(mim.address, ust.address, false);
     pair2 = await BaseV1Pair.attach(address2);
+    const address3 = await factory.getPair(mim.address, dai.address, true);
+    pair3 = await BaseV1Pair.attach(address3);
 
     expect(pair.address).to.equal(create2address);
   });
@@ -123,6 +133,8 @@ describe("BaseV1Factory", function () {
   it("BaseV1Router01 addLiquidity", async function () {
     const ust_1000 = ethers.BigNumber.from("100000000");
     const mim_1000 = ethers.BigNumber.from("100000000000000000000");
+    const mim_100000000 = ethers.BigNumber.from("100000000000000000000000000");
+    const dai_100000000 = ethers.BigNumber.from("100000000000000000000000000");
     const expected_2000 = ethers.BigNumber.from("2000000000");
     await ust.approve(router.address, ust_1000);
     await mim.approve(router.address, mim_1000);
@@ -130,6 +142,9 @@ describe("BaseV1Factory", function () {
     await ust.approve(router.address, ust_1000);
     await mim.approve(router.address, mim_1000);
     await router.addLiquidity(mim.address, ust.address, false, mim_1000, ust_1000, mim_1000, ust_1000, owner.address, Date.now());
+    await dai.approve(router.address, dai_100000000);
+    await mim.approve(router.address, mim_100000000);
+    await router.addLiquidity(mim.address, dai.address, true, mim_100000000, dai_100000000, 0, 0, owner.address, Date.now());
   });
 
   it("BaseV1Router01 pair1 getAmountsOut & swapExactTokensForTokens", async function () {
@@ -163,6 +178,22 @@ describe("BaseV1Factory", function () {
     const expected_output = await router.getAmountsOut(ust_1, [route]);
     await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
+  });
+
+  it("BaseV1Router01 pair3 getAmountsOut & swapExactTokensForTokens", async function () {
+    const mim_1000000 = ethers.BigNumber.from("1000000000000000000000000");
+    const route = {from:mim.address, to:dai.address, stable:true}
+
+    console.log(await pair3.getReserves());
+
+    console.log(await router.getAmountsOut(mim_1000000, [route]));
+    console.log(await pair3.getAmountOut(mim_1000000, mim.address));
+
+    const before = await mim.balanceOf(owner.address);
+    const expected_output_pair = await pair3.getAmountOut(mim_1000000, mim.address);
+    const expected_output = await router.getAmountsOut(mim_1000000, [route]);
+    await mim.approve(router.address, mim_1000000);
+    await router.swapExactTokensForTokens(mim_1000000, expected_output[1], [route], owner.address, Date.now());
   });
 
   it("deploy BaseV1Voter", async function () {
