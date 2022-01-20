@@ -272,8 +272,9 @@ contract Bribe {
         }
     }
 
-    // allows a user to claim rewards for a given token
+    // used by BaseV1Voter to allow batched reward claims
     function getRewardForOwner(uint tokenId, address[] memory tokens) public lock  {
+        require(msg.sender == factory);
         address _owner = ve(_ve).ownerOf(tokenId);
         for (uint i = 0; i < tokens.length; i++) {
             uint _reward = earned(tokens[i], tokenId);
@@ -597,13 +598,14 @@ contract BaseV1Voter {
         }
     }
 
-    function claimRewards(address[] memory _gauges, address[][] memory _tokens, address account) external {
+    function claimRewards(address[] memory _gauges, address[][] memory _tokens) external {
         for (uint i = 0; i < _gauges.length; i ++) {
-            IGauge(_gauges[i]).getReward(account, _tokens[i]);
+            IGauge(_gauges[i]).getReward(msg.sender, _tokens[i]);
         }
     }
 
     function claimBribes(address[] memory _bribes, address[][] memory _tokens, uint _tokenId) external {
+        require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
         for (uint i = 0; i < _bribes.length; i ++) {
             Bribe(_bribes[i]).getRewardForOwner(_tokenId, _tokens[i]);
         }
