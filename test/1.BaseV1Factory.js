@@ -144,6 +144,11 @@ describe("BaseV1Factory", function () {
     const expected_output = await router.getAmountsOut(ust_1, [route]);
     await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
+    const fees = await pair.fees()
+    console.log(await ust.balanceOf(fees));
+    console.log(await ust.balanceOf(owner.address));
+    await pair.claimFees();
+    console.log(await ust.balanceOf(owner.address));
   });
 
   it("BaseV1Router01 pair2 getAmountsOut & swapExactTokensForTokens", async function () {
@@ -223,10 +228,13 @@ describe("BaseV1Factory", function () {
 
   it("exit & getReward gauge stake", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
-    await pair.approve(gauge.address, pair_1000);
-    await gauge.deposit(pair_1000, owner.address);
+    const supply = await pair.balanceOf(owner.address);
+    await pair.approve(gauge.address, supply);
+    await gauge.deposit(supply, owner.address);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     expect(await gauge.totalSupply()).to.equal(0);
+    await pair.approve(gauge.address, supply);
+    await gauge.deposit(supply, owner.address);
   });
 
   it("gauge reset", async function () {
@@ -263,8 +271,49 @@ describe("BaseV1Factory", function () {
     await bribe.getReward(1, [ve_underlying.address]);
   });
 
+  it("BaseV1Router01 pair1 getAmountsOut & swapExactTokensForTokens", async function () {
+    const ust_1 = ethers.BigNumber.from("1000000");
+    const route = {from:ust.address, to:mim.address, stable:true}
+
+    console.log(await router.getAmountsOut(ust_1, [route]));
+    console.log(await pair.getAmountOut(ust_1, ust.address));
+
+    const before = await mim.balanceOf(owner.address);
+    const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
+    const expected_output = await router.getAmountsOut(ust_1, [route]);
+    await ust.approve(router.address, ust_1);
+    await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
+    const fees = await pair.fees()
+    console.log(await ust.balanceOf(fees));
+  });
+
+  it("BaseV1Router01 pair2 getAmountsOut & swapExactTokensForTokens", async function () {
+    const ust_1 = ethers.BigNumber.from("1000000");
+    const route = {from:ust.address, to:mim.address, stable:false}
+
+    console.log(await router.getAmountsOut(ust_1, [route]));
+    console.log(await pair2.getAmountOut(ust_1, ust.address));
+
+    const before = await mim.balanceOf(owner.address);
+    const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
+    const expected_output = await router.getAmountsOut(ust_1, [route]);
+    await ust.approve(router.address, ust_1);
+    await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
+    const fees = await pair2.fees()
+    console.log(await ust.balanceOf(fees));
+  });
+
   it("distribute and claim fees", async function () {
+
     await gauge_factory.distributeFees([gauge.address]);
+    console.log(await bribe.earned(ust.address, 1));
+    console.log(await ust.balanceOf(bribe.address));
+    console.log(await bribe.balanceOf(1));
+    console.log(await bribe.numCheckpoints(1));
+    console.log(await bribe.rewardPerToken(ust.address));
+    await network.provider.send("evm_increaseTime", [691200])
+    await network.provider.send("evm_mine")
+    console.log(await bribe.earned(ust.address, 1));
     await bribe.getReward(1, [mim.address, ust.address]);
   });
 
@@ -274,6 +323,7 @@ describe("BaseV1Factory", function () {
   });
 
   it("gauge claim rewards", async function () {
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);

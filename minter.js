@@ -23,7 +23,7 @@ function circulating_emission() {
   return circulating_supply() * emission / tail_base
 }
 
-while (week < 200) {
+while (week < 521) {
   _amount = weekly_emission();
   available -= _amount;
   totalSupply += _amount;

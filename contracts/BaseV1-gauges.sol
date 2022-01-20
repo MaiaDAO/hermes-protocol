@@ -369,7 +369,7 @@ contract Gauge {
                 Checkpoint memory cp1 = checkpoints[account][i+1];
                 (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
                 (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
-                reward += (cp0.balanceOf * _rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+                reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
             }
         }
 
@@ -427,6 +427,7 @@ contract Gauge {
             _safeTransferFrom(token, msg.sender, address(this), amount);
             rewardRate[token] = (amount + _left) / DURATION;
         }
+        require(rewardRate[token] > 0);
         periodFinish[token] = block.timestamp + DURATION;
         if (!isReward[token]) {
             isReward[token] = true;
