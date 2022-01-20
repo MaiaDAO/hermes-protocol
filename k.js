@@ -4,6 +4,10 @@ const _y = 2000000000000000000;
 
 yOut = get_y(xIn,_x,_y);
 
+const a = 100000207535506490044;
+
+console.log(a*a/1e18*a/1e18)
+
 
 function get_y(xIn, a, b) {
   x = xIn + a;

@@ -617,8 +617,8 @@ contract BaseV1Pair {
     }
 
     function _c0(uint a, uint b, uint x) internal pure returns (uint) {
-        uint a3 = a*a/1e18*a/1e18;
         uint b3 = b*b/1e18*b/1e18;
+        uint a3 = a*a/1e18*a/1e18;
         uint x2 = x*x/1e18;
         return 27*a3*b/1e18*x2/1e18+27*a*b3/1e18*x2/1e18;
     }
@@ -629,10 +629,7 @@ contract BaseV1Pair {
     }
 
     // Math.cbrt(2e54) = 1259921049894873164
-    function _get_y(uint xIn, uint a, uint b) internal view returns (uint amountOut) {
-        xIn = xIn * 1e18 / decimals0;
-        a = a * 1e18 / decimals0;
-        b = b * 1e18 / decimals1;
+    function _get_y(uint xIn, uint a, uint b) internal pure returns (uint amountOut) {
         uint x = xIn+a;
         uint c1 = 0;
         uint b1 = 0;
@@ -653,7 +650,10 @@ contract BaseV1Pair {
       (uint _reserve0, uint _reserve1,) = getReserves();
       amountIn -= amountIn / 10000; // remove fee from amount received
       if (stable) {
+          _reserve0 = _reserve0 * 1e18 / decimals0;
+          _reserve1 = _reserve1 * 1e18 / decimals1;
           (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+          amountIn = tokenIn == token0 ? amountIn * 1e18 / decimals0 : amountIn * 1e18 / decimals1;
           uint y = _get_y(amountIn, reserveA, reserveB);
           return y * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
       } else {
