@@ -73,8 +73,8 @@ contract BaseV1 {
     }
 
     function _mint(address _to, uint _amount) internal returns (bool) {
-        balanceOf[_to] = _amount;
-        totalSupply = _amount;
+        balanceOf[_to] += _amount;
+        totalSupply += _amount;
         emit Transfer(address(0x0), _to, _amount);
         return true;
     }
