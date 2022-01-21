@@ -53,7 +53,7 @@ describe("BaseV1Factory", function () {
     await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
     await ve_underlying.mint(owner.address, ethers.BigNumber.from("1000000000000000000000"));
-    vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
+    vecontract = await ethers.getContractFactory("contracts/ve_mock.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
     await ust.deployed();
