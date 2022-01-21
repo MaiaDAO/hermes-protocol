@@ -401,7 +401,7 @@ describe("BaseV1Factory", function () {
 
   it("distribute and claim fees", async function () {
 
-    await gauge_factory.distributeFees([gauge.address]);
+
     console.log(await bribe.earned(ust.address, 1));
     console.log(await ust.balanceOf(bribe.address));
     console.log(await bribe.balanceOf(1));
@@ -411,6 +411,8 @@ describe("BaseV1Factory", function () {
     await network.provider.send("evm_mine")
     console.log(await bribe.earned(ust.address, 1));
     await bribe.getReward(1, [mim.address, ust.address]);
+
+    await expect(gauge_factory.distributeFees([gauge.address])).to.be.revertedWith("");
   });
 
   it("minter mint", async function () {
