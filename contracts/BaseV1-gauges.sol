@@ -79,41 +79,42 @@ contract Gauge {
         IBribe(bribe).notifyRewardAmount(_token1, claimed1);
     }
 
+
     /// @notice A checkpoint for marking balance
-   struct Checkpoint {
+    struct Checkpoint {
        uint timestamp;
        uint balanceOf;
-   }
+    }
 
-  /// @notice A checkpoint for marking reward rate
- struct RewardPerTokenCheckpoint {
-     uint timestamp;
-     uint rewardPerToken;
- }
+    /// @notice A checkpoint for marking reward rate
+    struct RewardPerTokenCheckpoint {
+       uint timestamp;
+       uint rewardPerToken;
+    }
 
-  /// @notice A checkpoint for marking supply
- struct SupplyCheckpoint {
-     uint timestamp;
-     uint supply;
- }
+    /// @notice A checkpoint for marking supply
+    struct SupplyCheckpoint {
+       uint timestamp;
+       uint supply;
+    }
 
-   /// @notice A record of balance checkpoints for each account, by index
-   mapping (address => mapping (uint => Checkpoint)) public checkpoints;
+    /// @notice A record of balance checkpoints for each account, by index
+    mapping (address => mapping (uint => Checkpoint)) public checkpoints;
 
-   /// @notice The number of checkpoints for each account
-   mapping (address => uint) public numCheckpoints;
+    /// @notice The number of checkpoints for each account
+    mapping (address => uint) public numCheckpoints;
 
-   /// @notice A record of balance checkpoints for each token, by index
-   mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
+    /// @notice A record of balance checkpoints for each token, by index
+    mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
 
-   /// @notice The number of checkpoints
-   uint public supplyNumCheckpoints;
+    /// @notice The number of checkpoints
+    uint public supplyNumCheckpoints;
 
-   /// @notice A record of balance checkpoints for each token, by index
-   mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
+    /// @notice A record of balance checkpoints for each token, by index
+    mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
 
-   /// @notice The number of checkpoints for each token
-   mapping (address => uint) public rewardPerTokenNumCheckpoints;
+    /// @notice The number of checkpoints for each token
+    mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
     uint _unlocked = 1;
