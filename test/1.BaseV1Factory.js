@@ -127,7 +127,7 @@ describe("BaseV1Factory", function () {
     await ust.transfer(pair.address, ust_1);
     await mim.transfer(pair.address, mim_1);
     await pair.mint(owner.address);
-    console.log(await pair.getAmountOut(ust_1, ust.address));
+    expect(await pair.getAmountOut(ust_1, ust.address)).to.equal(ethers.BigNumber.from("945128557522723966"));
 
     /*await pair.transfer(pair.address, await pair.balanceOf(owner.address));
     await pair.burn(owner.address);
@@ -155,8 +155,7 @@ describe("BaseV1Factory", function () {
     const ust_1 = ethers.BigNumber.from("1000000");
     const route = {from:ust.address, to:mim.address, stable:true}
 
-    console.log(await router.getAmountsOut(ust_1, [route]));
-    console.log(await pair.getAmountOut(ust_1, ust.address));
+    expect((await router.getAmountsOut(ust_1, [route]))[1]).to.be.equal(await pair.getAmountOut(ust_1, ust.address));
 
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
@@ -164,18 +163,17 @@ describe("BaseV1Factory", function () {
     await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
     const fees = await pair.fees()
-    console.log(await ust.balanceOf(fees));
-    console.log(await ust.balanceOf(owner.address));
+    expect(await ust.balanceOf(fees)).to.be.equal(100);
+    const b = await ust.balanceOf(owner.address);
     await pair.claimFees();
-    console.log(await ust.balanceOf(owner.address));
+    expect(await ust.balanceOf(owner.address)).to.be.above(b);
   });
 
   it("BaseV1Router01 pair2 getAmountsOut & swapExactTokensForTokens", async function () {
     const ust_1 = ethers.BigNumber.from("1000000");
     const route = {from:ust.address, to:mim.address, stable:false}
 
-    console.log(await router.getAmountsOut(ust_1, [route]));
-    console.log(await pair2.getAmountOut(ust_1, ust.address));
+    expect((await router.getAmountsOut(ust_1, [route]))[1]).to.be.equal(await pair2.getAmountOut(ust_1, ust.address));
 
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
@@ -188,10 +186,7 @@ describe("BaseV1Factory", function () {
     const mim_1000000 = ethers.BigNumber.from("1000000000000000000000000");
     const route = {from:mim.address, to:dai.address, stable:true}
 
-    console.log(await pair3.getReserves());
-
-    console.log(await router.getAmountsOut(mim_1000000, [route]));
-    console.log(await pair3.getAmountOut(mim_1000000, mim.address));
+    expect((await router.getAmountsOut(mim_1000000, [route]))[1]).to.be.equal(await pair3.getAmountOut(mim_1000000, mim.address));
 
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair3.getAmountOut(mim_1000000, mim.address);
@@ -273,7 +268,6 @@ describe("BaseV1Factory", function () {
 
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000);
     await bribe.notifyRewardAmount(ve_underlying.address, pair_1000);
-    console.log(await bribe.rewardPerToken(ve_underlying.address));
 
     expect(await gauge.rewardRate(ve_underlying.address)).to.equal(ethers.BigNumber.from(1653));
     expect(await bribe.rewardRate(ve_underlying.address)).to.equal(ethers.BigNumber.from(1653));
@@ -313,14 +307,9 @@ describe("BaseV1Factory", function () {
   });
 
   it("bribe claim rewards", async function () {
-    console.log(await bribe.rewardPerToken(ve_underlying.address));
-    console.log(await ve_underlying.balanceOf(bribe.address));
-    console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
     await network.provider.send("evm_increaseTime", [691200])
     await network.provider.send("evm_mine")
-    console.log(await ve_underlying.balanceOf(bribe.address));
-    console.log(await bribe.earned(ve_underlying.address, 1));
     await bribe.getReward(1, [ve_underlying.address]);
   });
 
@@ -328,16 +317,10 @@ describe("BaseV1Factory", function () {
     const ust_1 = ethers.BigNumber.from("1000000");
     const route = {from:ust.address, to:mim.address, stable:true}
 
-    console.log(await router.getAmountsOut(ust_1, [route]));
-    console.log(await pair.getAmountOut(ust_1, ust.address));
-
     metadata = await pair.metadata()
     const roots = await ethers.getContractFactory("roots");
     root = await roots.deploy(metadata.dec0, metadata.dec1, metadata.st, metadata.t0, metadata.t1);
     await root.deployed();
-
-    console.log(await root.getAmountOutNewton(ust_1, ust.address, metadata.r0, metadata.r1));
-    console.log(await root.getAmountOutClosedForm(ust_1, ust.address, metadata.r0, metadata.r1));
 
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
@@ -351,27 +334,17 @@ describe("BaseV1Factory", function () {
     const ust_1 = ethers.BigNumber.from("1000000");
     const route = {from:ust.address, to:mim.address, stable:false}
 
-
-
-    console.log(await router.getAmountsOut(ust_1, [route]));
-    console.log(await pair2.getAmountOut(ust_1, ust.address));
-
     const before = await mim.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(ust_1, ust.address);
     const expected_output = await router.getAmountsOut(ust_1, [route]);
     await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
     const fees = await pair2.fees()
-    console.log(await ust.balanceOf(fees));
   });
 
   it("BaseV1Router01 pair1 getAmountsOut & swapExactTokensForTokens", async function () {
     const mim_1 = ethers.BigNumber.from("1000000000000000000");
     const route = {from:mim.address, to:ust.address, stable:true}
-    console.log(await pair.getReserves());
-
-    console.log(await pair.getAmountOut(mim_1, mim.address));
-    console.log(await router.getAmountsOut(mim_1, [route]));
 
     const before = await ust.balanceOf(owner.address);
     const expected_output_pair = await pair.getAmountOut(mim_1, mim.address);
@@ -379,16 +352,11 @@ describe("BaseV1Factory", function () {
     await mim.approve(router.address, mim_1);
     await router.swapExactTokensForTokens(mim_1, expected_output[1], [route], owner.address, Date.now());
     const fees = await pair.fees()
-    console.log(await mim.balanceOf(fees));
   });
 
   it("BaseV1Router01 pair2 getAmountsOut & swapExactTokensForTokens", async function () {
     const mim_1 = ethers.BigNumber.from("1000000000000000000");
     const route = {from:mim.address, to:ust.address, stable:false}
-    console.log(await pair2.stable());
-
-    console.log(await router.getAmountsOut(mim_1, [route]));
-    console.log(await pair2.getAmountOut(mim_1, mim.address));
 
     const before = await ust.balanceOf(owner.address);
     const expected_output_pair = await pair2.getAmountOut(mim_1, mim.address);
@@ -396,20 +364,12 @@ describe("BaseV1Factory", function () {
     await mim.approve(router.address, mim_1);
     await router.swapExactTokensForTokens(mim_1, expected_output[1], [route], owner.address, Date.now());
     const fees = await pair2.fees()
-    console.log(await mim.balanceOf(fees));
   });
 
   it("distribute and claim fees", async function () {
 
-
-    console.log(await bribe.earned(ust.address, 1));
-    console.log(await ust.balanceOf(bribe.address));
-    console.log(await bribe.balanceOf(1));
-    console.log(await bribe.numCheckpoints(1));
-    console.log(await bribe.rewardPerToken(ust.address));
     await network.provider.send("evm_increaseTime", [691200])
     await network.provider.send("evm_mine")
-    console.log(await bribe.earned(ust.address, 1));
     await bribe.getReward(1, [mim.address, ust.address]);
 
     await expect(gauge_factory.distributeFees([gauge.address])).to.be.revertedWith("");
@@ -425,7 +385,6 @@ describe("BaseV1Factory", function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, 0);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
@@ -450,12 +409,9 @@ describe("BaseV1Factory", function () {
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
   });
@@ -464,7 +420,6 @@ describe("BaseV1Factory", function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
@@ -489,12 +444,9 @@ describe("BaseV1Factory", function () {
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
   });
