@@ -152,11 +152,11 @@ function distribute(address token) external
 | BaseV1Router01 | [0xb4c16C699F77cA5286998B47C658D0AEdC857dA3](https://testnet.ftmscan.com/address/0xb4c16C699F77cA5286998B47C658D0AEdC857dA3#code) |
 | BaseV1 | [0x0673e1CF8EE91095232CFC98Ee1EbCeF42A1977E](https://testnet.ftmscan.com/address/0x0673e1CF8EE91095232CFC98Ee1EbCeF42A1977E#code) |
 | tokenizer | [0x3092326DB3220b5102A2999e8A5e80cd7503E1b5](https://testnet.ftmscan.com/address/0x3092326DB3220b5102A2999e8A5e80cd7503E1b5#code) |
-| ve3 | [0x8e16DBF95ab8E56648c23caDACf54fb94657e89a](https://testnet.ftmscan.com/address/0x8e16DBF95ab8E56648c23caDACf54fb94657e89a#code) |
-| ve3-dist | [0x9b81206dDd1B9C2B3162724bA6613C54D0bFf880](https://testnet.ftmscan.com/address/0x9b81206dDd1B9C2B3162724bA6613C54D0bFf880#code) |
+| ve3 | [0x81068A3eD5535c78884c7Ca566985c99069E5f81](https://testnet.ftmscan.com/address/0x81068A3eD5535c78884c7Ca566985c99069E5f81#code) |
+| ve3-dist | [0xc5da94535278c6410d8864009D67807cD26FE88A](https://testnet.ftmscan.com/address/0xc5da94535278c6410d8864009D67807cD26FE88A#code) |
 | BaseV1GaugesFactory | [0xa7f86ceac917fBcd6005eDB7FE5047C75Ac0aC42](https://testnet.ftmscan.com/address/0xa7f86ceac917fBcd6005eDB7FE5047C75Ac0aC42#code) ||
-| BaseV1GaugesVoter | [0x1D713e098F9f4261E4fce1edEF6E28Fe23B13C09](https://testnet.ftmscan.com/address/0x1D713e098F9f4261E4fce1edEF6E28Fe23B13C09#code) |
-| BaseV1Minter | [0x00cE35D54C75759cAc0eEA12173ce83aE7989768](https://testnet.ftmscan.com/address/0x00cE35D54C75759cAc0eEA12173ce83aE7989768#code) |
+| BaseV1GaugesVoter | [0x8C29427Bfa0f46Ab11066Df10D74cAEB363b4904](https://testnet.ftmscan.com/address/0x8C29427Bfa0f46Ab11066Df10D74cAEB363b4904#code) |
+| BaseV1Minter | [0xAE27B2DdBFd2D3b25898f769499CCd9c8DBc712b](https://testnet.ftmscan.com/address/0xAE27B2DdBFd2D3b25898f769499CCd9c8DBc712b#code) |
 
 ### Previous Testnet deployment
 
