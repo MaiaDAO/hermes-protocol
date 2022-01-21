@@ -308,12 +308,9 @@ def balanceOf(_owner: address) -> uint256:
 def ownerOf(_tokenId: uint256) -> address:
     """
     @dev Returns the address of the owner of the NFT.
-         Throws if `_tokenId` is not a valid NFT.
     @param _tokenId The identifier for an NFT.
     """
     owner: address = self.idToOwner[_tokenId]
-    # Throws if `_tokenId` is not a valid NFT
-    assert owner != ZERO_ADDRESS
     return owner
 
 
@@ -322,11 +319,9 @@ def ownerOf(_tokenId: uint256) -> address:
 def getApproved(_tokenId: uint256) -> address:
     """
     @dev Get the approved address for a single NFT.
-         Throws if `_tokenId` is not a valid NFT.
     @param _tokenId ID of the NFT to query the approval of.
     """
     # Throws if `_tokenId` is not a valid NFT
-    assert self.idToOwner[_tokenId] != ZERO_ADDRESS
     return self.idToApprovals[_tokenId]
 
 
