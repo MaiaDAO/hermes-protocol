@@ -249,13 +249,19 @@ describe("BaseV1Factory", function () {
     bribe3 = await Bribe.attach(bribe_address3);
 
     await pair.approve(gauge.address, pair_1000);
+    await pair2.approve(gauge2.address, pair_1000);
+    await pair3.approve(gauge3.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);
+    await gauge2.deposit(pair_1000, owner.address);
+    await gauge3.deposit(pair_1000, owner.address);
     expect(await gauge.totalSupply()).to.equal(pair_1000);
     expect(await gauge.earned(ve.address, owner.address)).to.equal(0);
   });
 
   it("withdraw gauge stake", async function () {
     await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await gauge2.withdraw(await gauge2.balanceOf(owner.address));
+    await gauge3.withdraw(await gauge3.balanceOf(owner.address));
     expect(await gauge.totalSupply()).to.equal(0);
   });
 
