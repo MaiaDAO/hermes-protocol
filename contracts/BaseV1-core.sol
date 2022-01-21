@@ -123,9 +123,11 @@ library FixedPoint {
 
 // Base V1 Fees contract is used as a 1:1 pair relationship to split out fees, this ensures that the curve does not need to be modified for LP shares
 contract BaseV1Fees {
+
     address immutable pair; // The pair it is bonded to
     address immutable token0; // token0 of pair, saved localy and statically for gas optimization
     address immutable token1; // Token1 of pair, saved localy and statically for gas optimization
+
     constructor(address _token0, address _token1) {
         pair = msg.sender;
         token0 = _token0;
@@ -164,9 +166,9 @@ contract BaseV1Pair {
     mapping(address => mapping (address => uint)) public allowance;
     mapping(address => uint) public balanceOf;
 
-    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 immutable DOMAIN_SEPARATOR;
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+    bytes32 constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint) public nonces;
 
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
@@ -186,19 +188,11 @@ contract BaseV1Pair {
     }
 
     // Capture oracle reading every 30 minutes
-    uint public constant periodSize = 1800;
-
-    function observationLength() external view returns (uint) {
-        return observations.length;
-    }
-
-    function lastObservation() public view returns (Observation memory) {
-        return observations[observations.length-1];
-    }
+    uint constant periodSize = 1800;
 
     Observation[] public observations;
 
-    uint  immutable decimals0;
+    uint immutable decimals0;
     uint immutable decimals1;
 
     uint112 public reserve0;
@@ -216,37 +210,79 @@ contract BaseV1Pair {
     uint public index0 = 0;
     uint public index1 = 0;
 
-    function metadata() external view returns (uint dec0, uint dec1, uint112 r0, uint112 r1, bool st, address t0, address t1) {
-        return (decimals0, decimals1, reserve0, reserve1, stable, token0, token1);
-    }
-
     // position assigned to each LP to track their current index0 & index1 vs the global position
     mapping(address => uint) public supplyIndex0;
     mapping(address => uint) public supplyIndex1;
 
-    // Accrue fees on token0
-    function _update0(uint amount) internal {
-        _safeTransfer(token0, fees, amount); // transfer the fees out to BaseV1Fees
-        uint256 _ratio = amount * 1e18 / totalSupply; // 1e18 adjustment is removed during claim
-        if (_ratio > 0) {
-          index0 += _ratio;
-        }
-        emit Fees(msg.sender, amount, 0);
-    }
-
-    // Accrue fees on token1
-    function _update1(uint amount) internal {
-        _safeTransfer(token1, fees, amount);
-        uint256 _ratio = amount * 1e18 / totalSupply;
-        if (_ratio > 0) {
-          index1 += _ratio;
-        }
-        emit Fees(msg.sender, 0, amount);
-    }
-
     // tracks the amount of unclaimed, but claimable tokens off of fees for token0 and token1
     mapping(address => uint) public claimable0;
     mapping(address => uint) public claimable1;
+
+    event Fees(address indexed sender, uint amount0, uint amount1);
+    event Mint(address indexed sender, uint amount0, uint amount1);
+    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
+    event Swap(
+        address indexed sender,
+        uint amount0In,
+        uint amount1In,
+        uint amount0Out,
+        uint amount1Out,
+        address indexed to
+    );
+    event Sync(uint112 reserve0, uint112 reserve1);
+
+    constructor() {
+        uint chainId = block.chainid;
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+                keccak256(bytes(name)),
+                keccak256(bytes('1')),
+                chainId,
+                address(this)
+            )
+        );
+
+        (address _token0, address _token1, bool _stable) = BaseV1Factory(msg.sender).getInitializable();
+        (token0, token1, stable) = (_token0, _token1, _stable);
+        fees = address(new BaseV1Fees(_token0, _token1));
+        uint _decimals0 = 1;
+        uint _decimals1 = 1;
+        if (_stable) {
+            _decimals0 = 10**erc20(_token0).decimals();
+            _decimals1 = 10**erc20(_token1).decimals();
+            name = string(abi.encodePacked("StableV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
+            symbol = string(abi.encodePacked("sAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
+        } else {
+            name = string(abi.encodePacked("VolatileV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
+            symbol = string(abi.encodePacked("vAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
+        }
+        decimals0 = _decimals0;
+        decimals1 = _decimals1;
+
+        observations.push(Observation(uint32(block.timestamp % 2**32), 0, 0));
+    }
+
+    // simple re-entrancy check
+    uint _unlocked = 1;
+    modifier lock() {
+        require(_unlocked == 1);
+        _unlocked = 0;
+        _;
+        _unlocked = 1;
+    }
+
+    function observationLength() external view returns (uint) {
+        return observations.length;
+    }
+
+    function lastObservation() public view returns (Observation memory) {
+        return observations[observations.length-1];
+    }
+
+    function metadata() external view returns (uint dec0, uint dec1, uint112 r0, uint112 r1, bool st, address t0, address t1) {
+        return (decimals0, decimals1, reserve0, reserve1, stable, token0, token1);
+    }
 
     function tokens() external view returns (address, address) {
         return (token0, token1);
@@ -267,6 +303,26 @@ contract BaseV1Pair {
         claimable1[recipient] = 0;
 
         BaseV1Fees(fees).claimFeesFor(recipient, claimed0, claimed1);
+    }
+
+    // Accrue fees on token0
+    function _update0(uint amount) internal {
+        _safeTransfer(token0, fees, amount); // transfer the fees out to BaseV1Fees
+        uint256 _ratio = amount * 1e18 / totalSupply; // 1e18 adjustment is removed during claim
+        if (_ratio > 0) {
+          index0 += _ratio;
+        }
+        emit Fees(msg.sender, amount, 0);
+    }
+
+    // Accrue fees on token1
+    function _update1(uint amount) internal {
+        _safeTransfer(token1, fees, amount);
+        uint256 _ratio = amount * 1e18 / totalSupply;
+        if (_ratio > 0) {
+          index1 += _ratio;
+        }
+        emit Fees(msg.sender, 0, amount);
     }
 
     // this function MUST be called on any balance changes, otherwise can be used to infinitely claim fees
@@ -302,64 +358,6 @@ contract BaseV1Pair {
         _blockTimestampLast = blockTimestampLast;
     }
 
-    event Fees(address indexed sender, uint amount0, uint amount1);
-    event Mint(address indexed sender, uint amount0, uint amount1);
-    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
-    event Swap(
-        address indexed sender,
-        uint amount0In,
-        uint amount1In,
-        uint amount0Out,
-        uint amount1Out,
-        address indexed to
-    );
-    event Sync(uint112 reserve0, uint112 reserve1);
-
-
-    function _safeTransfer(address token,address to,uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
-    constructor() {
-        uint chainId = block.chainid;
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
-                keccak256(bytes(name)),
-                keccak256(bytes('1')),
-                chainId,
-                address(this)
-            )
-        );
-
-        (address _token0, address _token1, bool _stable) = BaseV1Factory(msg.sender).getInitializable();
-        (token0, token1, stable) = (_token0, _token1, _stable);
-        fees = address(new BaseV1Fees(_token0, _token1));
-        uint _decimals0 = 1;
-        uint _decimals1 = 1;
-        if (_stable) {
-            _decimals0 = 10**erc20(_token0).decimals();
-            _decimals1 = 10**erc20(_token1).decimals();
-            name = string(abi.encodePacked("StableV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
-            symbol = string(abi.encodePacked("sAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
-        } else {
-            name = string(abi.encodePacked("VolatileV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
-            symbol = string(abi.encodePacked("vAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
-        }
-        decimals0 = _decimals0;
-        decimals1 = _decimals1;
-
-        observations.push(Observation(uint32(block.timestamp % 2**32), 0, 0));
-    }
-
     // update reserves and, on the first call per block, price accumulators
     function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
         require(balance0 <= type(uint112).max && balance1 <= type(uint112).max, 'BaseV1: OVERFLOW');
@@ -381,15 +379,6 @@ contract BaseV1Pair {
         reserve1 = uint112(balance1);
         blockTimestampLast = blockTimestamp;
         emit Sync(uint112(reserve0), uint112(reserve1));
-    }
-
-    // simple re-entrancy check
-    uint _unlocked = 1;
-    modifier lock() {
-        require(_unlocked == 1);
-        _unlocked = 0;
-        _;
-        _unlocked = 1;
     }
 
     // returns current timestamp
@@ -723,6 +712,18 @@ contract BaseV1Pair {
         balanceOf[dst] += amount;
 
         emit Transfer(src, dst, amount);
+    }
+
+    function _safeTransfer(address token,address to,uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
+    }
+
+    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
 
