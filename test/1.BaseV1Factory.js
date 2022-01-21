@@ -33,7 +33,11 @@ describe("BaseV1Factory", function () {
   let owner;
   let gauge_factory;
   let gauge;
+  let gauge2;
+  let gauge3;
   let bribe;
+  let bribe2;
+  let bribe3;
   let minter;
   let ve_dist;
   let library;
@@ -221,16 +225,28 @@ describe("BaseV1Factory", function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
 
     await gauge_factory.createGauge(pair.address);
+    await gauge_factory.createGauge(pair2.address);
+    await gauge_factory.createGauge(pair3.address);
     expect(await gauge_factory.gauges(pair.address)).to.not.equal(0x0000000000000000000000000000000000000000);
 
     const gauge_address = await gauge_factory.gauges(pair.address);
     const bribe_address = await gauge_factory.bribes(gauge_address);
 
+    const gauge_address2 = await gauge_factory.gauges(pair2.address);
+    const bribe_address2 = await gauge_factory.bribes(gauge_address2);
+
+    const gauge_address3 = await gauge_factory.gauges(pair3.address);
+    const bribe_address3 = await gauge_factory.bribes(gauge_address3);
+
     const Gauge = await ethers.getContractFactory("Gauge");
     gauge = await Gauge.attach(gauge_address);
+    gauge2 = await Gauge.attach(gauge_address2);
+    gauge3 = await Gauge.attach(gauge_address3);
 
     const Bribe = await ethers.getContractFactory("Bribe");
     bribe = await Bribe.attach(bribe_address);
+    bribe2 = await Bribe.attach(bribe_address2);
+    bribe3 = await Bribe.attach(bribe_address3);
 
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, owner.address);

@@ -43,6 +43,7 @@ interface IGauge {
     function notifyRewardAmount(address token, uint amount) external;
     function getReward(address account, address[] memory tokens) external;
     function claimFees() external returns (uint claimed0, uint claimed1);
+    function left(address token) external view returns (uint);
 }
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with BaseV1Gauges.vote())
@@ -621,10 +622,14 @@ contract BaseV1Voter {
     function distribute(address _gauge) public lock {
         _updateFor(_gauge);
         uint _claimable = claimable[_gauge];
-        claimable[_gauge] = 0;
-        erc20(base).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
-        erc20(base).approve(_gauge, _claimable);
-        IGauge(_gauge).notifyRewardAmount(base, _claimable);
+        uint _left = IGauge(_gauge).left(base);
+        if (_claimable > _left) {
+            claimable[_gauge] = 0;
+            erc20(base).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
+            erc20(base).approve(_gauge, _claimable);
+            IGauge(_gauge).notifyRewardAmount(base, _claimable);
+        }
+
     }
 
     function distro() external {
