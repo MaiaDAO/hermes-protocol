@@ -603,48 +603,48 @@ contract BaseV1Pair {
 
     function _get_y(uint x0, uint xy, uint y) internal pure returns (uint) {
         for (uint i = 0; i < 255; i++) {
-          uint y_prev = y;
-          y = y - (_f(x0,xy,y)*1e18/_d(x0,y));
-          if (y > y_prev) {
+            uint y_prev = y;
+            y = y - (_f(x0,xy,y)*1e18/_d(x0,y));
+            if (y > y_prev) {
                 if (y - y_prev <= 1) {
                     return y;
                 }
-          } else {
+            } else {
                 if (y_prev - y <= 1) {
                     return y;
                 }
-          }
+            }
         }
         return y;
     }
 
     function getAmountOut(uint amountIn, address tokenIn) external view returns (uint) {
-      (uint _reserve0, uint _reserve1,) = getReserves();
-      amountIn -= amountIn / 10000; // remove fee from amount received
-      if (stable) {
-          uint xy =  _k(_reserve0, _reserve1);
-          _reserve0 = _reserve0 * 1e18 / decimals0;
-          _reserve1 = _reserve1 * 1e18 / decimals1;
-          (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
-          amountIn = tokenIn == token0 ? amountIn * 1e18 / decimals0 : amountIn * 1e18 / decimals1;
-          uint y = reserveB - _get_y(amountIn+reserveA, xy, reserveB);
-          return y * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
-      } else {
-          (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
-          return amountIn * reserveB / (reserveA + amountIn);
-      }
+        (uint _reserve0, uint _reserve1,) = getReserves();
+        amountIn -= amountIn / 10000; // remove fee from amount received
+        if (stable) {
+            uint xy =  _k(_reserve0, _reserve1);
+            _reserve0 = _reserve0 * 1e18 / decimals0;
+            _reserve1 = _reserve1 * 1e18 / decimals1;
+            (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+            amountIn = tokenIn == token0 ? amountIn * 1e18 / decimals0 : amountIn * 1e18 / decimals1;
+            uint y = reserveB - _get_y(amountIn+reserveA, xy, reserveB);
+            return y * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
+        } else {
+            (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+            return amountIn * reserveB / (reserveA + amountIn);
+        }
     }
 
     function _k(uint x, uint y) internal view returns (uint) {
-      if (stable) {
-          uint _x = x * 1e18 / decimals0;
-          uint _y = y * 1e18 / decimals1;
-          uint _a = (_x * _y) / 1e18;
-          uint _b = ((_x * _x) / 1e18 + (_y * _y) / 1e18);
-          return _a * _b / 1e18;  // x3y+y3x >= k
-      } else {
-          return x * y; // xy >= k
-      }
+        if (stable) {
+            uint _x = x * 1e18 / decimals0;
+            uint _y = y * 1e18 / decimals1;
+            uint _a = (_x * _y) / 1e18;
+            uint _b = ((_x * _x) / 1e18 + (_y * _y) / 1e18);
+            return _a * _b / 1e18;  // x3y+y3x >= k
+        } else {
+            return x * y; // xy >= k
+        }
     }
 
     function _mint(address dst, uint amount) internal {
