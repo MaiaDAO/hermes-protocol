@@ -50,8 +50,8 @@ contract Gauge {
     uint public derivedSupply;
     mapping(address => uint) public derivedBalances;
 
-    uint public constant DURATION = 7 days; // rewards are released over 7 days
-    uint public constant PRECISION = 10 ** 18;
+    uint constant DURATION = 7 days; // rewards are released over 7 days
+    uint constant PRECISION = 10 ** 18;
 
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
