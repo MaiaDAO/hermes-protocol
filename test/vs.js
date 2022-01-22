@@ -15,11 +15,8 @@ describe("VE", function () {
     ve_underlying = await token.deploy("VE", "VE", 18, owner.address);
     await ve_underlying.deployed();
     await ve_underlying.mint(owner.address, ve_underlying_amount);
-    const Tokenizer = await ethers.getContractFactory("tokenizer");
-    tokenizer = await Tokenizer.deploy();
-    tokenizer.deployed();
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
-    ve = await vecontract.deploy(ve_underlying.address, "ve NFT", "ve", 1, tokenizer.address);
+    ve = await vecontract.deploy(ve_underlying.address);
     await ve.deployed();
   });
 

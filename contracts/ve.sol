@@ -24,6 +24,67 @@ pragma solidity 0.8.11;
 #       maxtime (4 years?)
 */
 
+/// [MIT License]
+/// @title Base64
+/// @notice Provides a function for encoding some bytes in base64
+/// @author Brecht Devos <brecht@loopring.org>
+library Base64 {
+    bytes internal constant TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    /// @notice Encodes some bytes to the base64 representation
+    function encode(bytes memory data) internal pure returns (string memory) {
+        uint256 len = data.length;
+        if (len == 0) return "";
+
+        // multiply by 4/3 rounded up
+        uint256 encodedLen = 4 * ((len + 2) / 3);
+
+        // Add some extra buffer at the end
+        bytes memory result = new bytes(encodedLen + 32);
+
+        bytes memory table = TABLE;
+
+        assembly {
+            let tablePtr := add(table, 1)
+            let resultPtr := add(result, 32)
+
+            for {
+                let i := 0
+            } lt(i, len) {
+
+            } {
+                i := add(i, 3)
+                let input := and(mload(add(data, i)), 0xffffff)
+
+                let out := mload(add(tablePtr, and(shr(18, input), 0x3F)))
+                out := shl(8, out)
+                out := add(out, and(mload(add(tablePtr, and(shr(12, input), 0x3F))), 0xFF))
+                out := shl(8, out)
+                out := add(out, and(mload(add(tablePtr, and(shr(6, input), 0x3F))), 0xFF))
+                out := shl(8, out)
+                out := add(out, and(mload(add(tablePtr, and(input, 0x3F))), 0xFF))
+                out := shl(224, out)
+
+                mstore(resultPtr, out)
+
+                resultPtr := add(resultPtr, 4)
+            }
+
+            switch mod(len, 3)
+            case 1 {
+                mstore(sub(resultPtr, 2), shl(240, 0x3d3d))
+            }
+            case 2 {
+                mstore(sub(resultPtr, 1), shl(248, 0x3d))
+            }
+
+            mstore(result, encodedLen)
+        }
+
+        return string(result);
+    }
+}
+
 /**
  * @dev Interface of the ERC165 standard, as defined in the
  * https://eips.ethereum.org/EIPS/eip-165[EIP].
@@ -328,15 +389,6 @@ interface IERC20 {
     function decimals() external view returns (uint256);
 }
 
-interface Tokenizer {
-    function tokenURI(
-        uint256 tokenId,
-        uint256 balanceOf,
-        uint256 locked_end,
-        uint256 value
-    ) external view returns (string memory);
-}
-
 struct Point {
     int128 bias;
     int128 slope; // # -dweight / dt
@@ -387,15 +439,13 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     mapping(uint256 => uint256) public user_point_epoch;
     mapping(uint256 => int128) public slope_changes; // time -> signed slope change
 
-    string public name;
-    string public symbol;
-    string public version;
-    uint256 public decimals;
-    address tokenizer;
+    string constant public name = "ve";
+    string constant public symbol = "ve";
+    string constant public version = "1.0.0";
+    uint256 constant public decimals = 18;
 
     uint256 constant MIN_VE = 2500 * 1 ether;
 
-    mapping(address => bool) blockTransfers;
     /// @dev Current count of token
     uint256 tokenId;
 
@@ -436,9 +486,9 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     bytes4 constant ERC721_ENUMERABLE_INTERFACE_ID = 0x780e9d63;
 
     /// @dev reentrancy guard
-    uint8 private constant _not_entered = 1;
-    uint8 private constant _entered = 2;
-    uint8 private _entered_state = 1;
+    uint8 constant _not_entered = 1;
+    uint8 constant _entered = 2;
+    uint8 _entered_state = 1;
     modifier nonreentrant() {
         require(_entered_state == _not_entered);
         _entered_state = _entered;
@@ -448,28 +498,12 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
     /// @notice Contract constructor
     /// @param token_addr `ERC20CRV` token address
-    /// @param _name Token name
-    /// @param _symbol Token symbol
-    /// @param _version Contract version - required for Aragon compatibility
     constructor(
-        address token_addr,
-        string memory _name,
-        string memory _symbol,
-        string memory _version,
-        address _tokenizer
+        address token_addr
     ) {
         token = token_addr;
         point_history[0].blk = block.number;
         point_history[0].ts = block.timestamp;
-
-        uint256 _decimals = IERC20(token_addr).decimals();
-        assert(_decimals <= 255);
-        decimals = _decimals;
-
-        name = _name;
-        symbol = _symbol;
-        version = _version;
-        tokenizer = _tokenizer;
 
         supportedInterfaces[ERC165_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_INTERFACE_ID] = true;
@@ -512,7 +546,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Returns the number of NFTs owned by `_owner`.
     ///      Throws if `_owner` is the zero address. NFTs assigned to the zero address are considered invalid.
     /// @param _owner Address for whom to query the balance.
-    function _balance(address _owner) private view returns (uint256) {
+    function _balance(address _owner) internal view returns (uint256) {
         return ownerToNFTokenCount[_owner];
     }
 
@@ -532,7 +566,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Get the approved address for a single NFT.
     /// @param _tokenId ID of the NFT to query the approval of.
     function getApproved(uint256 _tokenId) external view returns (address) {
-        // Throws if `_tokenId` is not a valid NFT
         return idToApprovals[_tokenId];
     }
 
@@ -544,15 +577,12 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     }
 
     /// @dev  Get token by index
-    ///      Throws if '_tokenId' is larger than totalSupply()
     function tokenByIndex(uint256 _tokenId) external view returns (uint256) {
-        assert(_tokenId <= tokenId);
-        return tokenId;
+        return _tokenId;
     }
 
     /// @dev  Get token by index
     function tokenOfOwnerByIndex(address _owner, uint256 _tokenIndex) external view returns (uint256) {
-        assert(_tokenIndex <= _balance(_owner));
         return ownerToNFTokenIdList[_owner][_tokenIndex];
     }
 
@@ -560,7 +590,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _spender address of the spender to query
     /// @param _tokenId uint256 ID of the token to be transferred
     /// @return bool whether the msg.sender is approved for the given token ID, is an operator of the owner, or is the owner of the token
-    function _isApprovedOrOwner(address _spender, uint256 _tokenId) private view returns (bool) {
+    function _isApprovedOrOwner(address _spender, uint256 _tokenId) internal view returns (bool) {
         address owner = idToOwner[_tokenId];
         bool spenderIsOwner = owner == _spender;
         bool spenderIsApproved = _spender == idToApprovals[_tokenId];
@@ -575,7 +605,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Add a NFT to an index mapping to a given address
     /// @param _to address of the receiver
     /// @param _tokenId uint256 ID Of the token to be added
-    function _addTokenToOwnerList(address _to, uint256 _tokenId) private {
+    function _addTokenToOwnerList(address _to, uint256 _tokenId) internal {
         uint256 current_count = _balance(_to);
 
         ownerToNFTokenIdList[_to][current_count] = _tokenId;
@@ -585,7 +615,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Remove a NFT from an index mapping to a given address
     /// @param _from address of the sender
     /// @param _tokenId uint256 ID Of the token to be removed
-    function _removeTokenFromOwnerList(address _from, uint256 _tokenId) private {
+    function _removeTokenFromOwnerList(address _from, uint256 _tokenId) internal {
         // Delete
         uint256 current_count = _balance(_from);
         uint256 current_index = tokenToOwnerIndex[_tokenId];
@@ -660,12 +690,9 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         address _to,
         uint256 _tokenId,
         address _sender
-    ) private {
+    ) internal {
         // Check requirements
         assert(_isApprovedOrOwner(_sender, _tokenId));
-        assert(!blockTransfers[_to]);
-        // Throws if `_to` is the zero address
-        assert(_to != address(0));
         // Clear approval. Throws if `_from` is not the current owner
         _clearApproval(_from, _tokenId);
         // Remove NFT. Throws if `_tokenId` is not a valid NFT
@@ -694,7 +721,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         _transferFrom(_from, _to, _tokenId, msg.sender);
     }
 
-    function isContract(address account) internal view returns (bool) {
+    function _isContract(address account) internal view returns (bool) {
         // This method relies on extcodesize, which returns 0 for contracts in
         // construction, since the code is only stored at the end of the
         // constructor execution.
@@ -725,7 +752,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     ) public {
         _transferFrom(_from, _to, _tokenId, msg.sender);
 
-        if (isContract(_to)) {
+        if (_isContract(_to)) {
             // Throws if transfer destination is a contract which does not implement 'onERC721Received'
             try IERC721Receiver(_to).onERC721Received(msg.sender, _from, _tokenId, _data) returns (bytes4) {} catch (
                 bytes memory reason
@@ -747,10 +774,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 _tokenId
     ) external {
         safeTransferFrom(_from, _to, _tokenId, '');
-    }
-
-    function toggleBlockTransfers(bool toggle) external {
-        blockTransfers[msg.sender] = toggle;
     }
 
     /// @dev Set or reaffirm the approved address for an NFT. The zero address indicates there is no approved address.
@@ -793,7 +816,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _to The address that will receive the minted tokens.
     /// @param _tokenId The token id to mint.
     /// @return A boolean that indicates if the operation was successful.
-    function _mint(address _to, uint256 _tokenId) private returns (bool) {
+    function _mint(address _to, uint256 _tokenId) internal returns (bool) {
         // Throws if `_to` is zero address
         assert(_to != address(0));
         // Add NFT. Throws if `_tokenId` is owned by someone
@@ -810,7 +833,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 _tokenId,
         LockedBalance memory old_locked,
         LockedBalance memory new_locked
-    ) private {
+    ) internal {
         Point memory u_old;
         Point memory u_new;
         int128 old_dslope = 0;
@@ -956,7 +979,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         LockedBalance memory locked_balance,
         DepositType deposit_type,
         bool should_merge
-    ) private {
+    ) internal {
         LockedBalance memory _locked = locked_balance;
         uint256 supply_before = supply;
 
@@ -1143,7 +1166,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
         LockedBalance storage _locked = locked[_tokenId];
         return
-            Tokenizer(tokenizer).tokenURI(
+            tokenURI(
                 _tokenId,
                 _balanceOfNFT(_tokenId, block.timestamp),
                 _locked.end,
@@ -1277,5 +1300,38 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         }
         // Now dt contains info on how far are we beyond point
         return supply_at(point, point.ts + dt);
+    }
+
+    function tokenURI(uint _tokenId, uint _balanceOf, uint _locked_end, uint _value) public pure returns (string memory output) {
+        output = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" /><text x="10" y="20" class="base">';
+        output = string(abi.encodePacked(output, "token ", toString(_tokenId), '</text><text x="10" y="40" class="base">'));
+        output = string(abi.encodePacked(output, "balanceOf ", toString(_balanceOf), '</text><text x="10" y="60" class="base">'));
+        output = string(abi.encodePacked(output, "locked_end ", toString(_locked_end), '</text><text x="10" y="80" class="base">'));
+        output = string(abi.encodePacked(output, "value ", toString(_value), '</text></svg>'));
+
+        string memory json = Base64.encode(bytes(string(abi.encodePacked('{"name": "lock #', toString(_tokenId), '", "description": "Solidly locks, can be used to boost gauge yields, vote on token emission, and receive bribes", "image": "data:image/svg+xml;base64,', Base64.encode(bytes(output)), '"}'))));
+        output = string(abi.encodePacked('data:application/json;base64,', json));
+    }
+
+    function toString(uint256 value) internal pure returns (string memory) {
+    // Inspired by OraclizeAPI's implementation - MIT license
+    // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
+
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 }
