@@ -41,18 +41,19 @@ describe("BaseV1Factory", function () {
   let minter;
   let ve_dist;
   let library;
+  let staking;
 
   it("deploy base coins", async function () {
     [owner] = await ethers.getSigners();
     token = await ethers.getContractFactory("Token");
     ust = await token.deploy('ust', 'ust', 6, owner.address);
-    await ust.mint(owner.address, ethers.BigNumber.from("1000000000000000"));
+    await ust.mint(owner.address, ethers.BigNumber.from("1000000000000000000"));
     mim = await token.deploy('MIM', 'MIM', 18, owner.address);
-    await mim.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000"));
+    await mim.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     dai = await token.deploy('DAI', 'DAI', 18, owner.address);
-    await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000"));
+    await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
-    await ve_underlying.mint(owner.address, ethers.BigNumber.from("1000000000000000000000"));
+    await ve_underlying.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000"));
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
@@ -142,11 +143,11 @@ describe("BaseV1Factory", function () {
   });
 
   it("BaseV1Router01 addLiquidity", async function () {
-    const ust_1000 = ethers.BigNumber.from("100000000");
-    const mim_1000 = ethers.BigNumber.from("100000000000000000000");
+    const ust_1000 = ethers.BigNumber.from("100000000000");
+    const mim_1000 = ethers.BigNumber.from("100000000000000000000000");
     const mim_100000000 = ethers.BigNumber.from("100000000000000000000000000");
     const dai_100000000 = ethers.BigNumber.from("100000000000000000000000000");
-    const expected_2000 = ethers.BigNumber.from("2000000000");
+    const expected_2000 = ethers.BigNumber.from("2000000000000");
     await ust.approve(router.address, ust_1000);
     await mim.approve(router.address, mim_1000);
     await router.addLiquidity(mim.address, ust.address, true, mim_1000, ust_1000, mim_1000, ust_1000, owner.address, Date.now());
@@ -213,7 +214,6 @@ describe("BaseV1Factory", function () {
   });
 
   it("deploy BaseV1Minter", async function () {
-
     const VeDist = await ethers.getContractFactory("contracts/ve_dist.sol:ve_dist");
     ve_dist = await VeDist.deploy();
     await ve_dist.deployed();
@@ -230,6 +230,9 @@ describe("BaseV1Factory", function () {
     await gauge_factory.createGauge(pair2.address);
     await gauge_factory.createGauge(pair3.address);
     expect(await gauge_factory.gauges(pair.address)).to.not.equal(0x0000000000000000000000000000000000000000);
+
+    sr = await ethers.getContractFactory("StakingRewards");
+    staking = await sr.deploy(pair.address, ve_underlying.address);
 
     const gauge_address = await gauge_factory.gauges(pair.address);
     const bribe_address = await gauge_factory.bribes(gauge_address);
@@ -251,9 +254,11 @@ describe("BaseV1Factory", function () {
     bribe3 = await Bribe.attach(bribe_address3);
 
     await pair.approve(gauge.address, pair_1000);
+    await pair.approve(staking.address, pair_1000);
     await pair2.approve(gauge2.address, pair_1000);
     await pair3.approve(gauge3.address, pair_1000);
     await gauge.deposit(pair_1000, 0);
+    await staking.stake(pair_1000);
     await gauge2.deposit(pair_1000, 0);
     await gauge3.deposit(pair_1000, 0);
     expect(await gauge.totalSupply()).to.equal(pair_1000);
@@ -262,6 +267,7 @@ describe("BaseV1Factory", function () {
 
   it("withdraw gauge stake", async function () {
     await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await staking.withdraw(await staking._balances(owner.address));
     await gauge2.withdraw(await gauge2.balanceOf(owner.address));
     await gauge3.withdraw(await gauge3.balanceOf(owner.address));
     expect(await gauge.totalSupply()).to.equal(0);
@@ -272,12 +278,15 @@ describe("BaseV1Factory", function () {
 
     await ve_underlying.approve(gauge.address, pair_1000);
     await ve_underlying.approve(bribe.address, pair_1000);
+    await ve_underlying.approve(staking.address, pair_1000);
 
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000);
     await bribe.notifyRewardAmount(ve_underlying.address, pair_1000);
+    await staking.notifyRewardAmount(pair_1000);
 
     expect(await gauge.rewardRate(ve_underlying.address)).to.equal(ethers.BigNumber.from(1653));
     expect(await bribe.rewardRate(ve_underlying.address)).to.equal(ethers.BigNumber.from(1653));
+    expect(await staking.rewardRate()).to.equal(ethers.BigNumber.from(1653));
   });
 
   it("exit & getReward gauge stake", async function () {
@@ -288,7 +297,9 @@ describe("BaseV1Factory", function () {
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     expect(await gauge.totalSupply()).to.equal(0);
     await pair.approve(gauge.address, supply);
-    await gauge.deposit(supply, 1);
+    await gauge.deposit(pair_1000, 1);
+    await pair.approve(staking.address, supply);
+    await staking.stake(pair_1000);
   });
 
   it("gauge reset", async function () {
@@ -381,6 +392,15 @@ describe("BaseV1Factory", function () {
 
     await expect(gauge_factory.distributeFees([gauge.address])).to.be.revertedWith("");
   });
+
+  it("staking rewards sense check", async function () {
+    console.log(await gauge.rewardRate(ve_underlying.address));
+    console.log(await staking.rewardRate());
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    console.log(await staking.earned(owner.address));
+  });
+
+
 
   it("minter mint", async function () {
     await minter.update_period();

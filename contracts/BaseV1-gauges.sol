@@ -369,13 +369,20 @@ contract Gauge {
         uint _endIndex = numCheckpoints[account]-1;
 
         uint reward = 0;
-        for (uint i = _startIndex; i < _endIndex; i++) {
-            Checkpoint memory cp0 = checkpoints[account][i];
-            Checkpoint memory cp1 = checkpoints[account][i+1];
-            (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
-            (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
-            reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+
+        if (_endIndex - _startIndex > 1) {
+            for (uint i = _startIndex; i < _endIndex; i++) {
+                Checkpoint memory cp0 = checkpoints[account][i];
+                Checkpoint memory cp1 = checkpoints[account][i+1];
+                (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
+                (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
+                reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+            }
         }
+
+        Checkpoint memory cp = checkpoints[account][_endIndex];
+        (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
+        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][account])) / PRECISION;
 
         return reward;
     }
@@ -421,7 +428,6 @@ contract Gauge {
     function notifyRewardAmount(address token, uint amount) external lock {
         rewardPerTokenStored[token] = _updateRewardPerToken(token);
         lastUpdateTime[token] = block.timestamp;
-        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);
