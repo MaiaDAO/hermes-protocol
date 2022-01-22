@@ -393,6 +393,7 @@ describe("BaseV1Factory", function () {
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, 0);
     await gauge.getReward(owner.address, [ve_underlying.address]);
+
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, 1);

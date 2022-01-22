@@ -282,6 +282,10 @@ contract Gauge {
     function getReward(address account, address[] memory tokens) public lock {
       require(msg.sender == account || msg.sender == voter);
       for (uint i = 0; i < tokens.length; i++) {
+          rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
+          lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+          _writeRewardPerTokenCheckpoint(tokens[i], rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]);
+
           uint _reward = earned(tokens[i], account);
           lastEarn[tokens[i]][account] = block.timestamp;
           userRewardPerTokenStored[tokens[i]][account] = rewardPerToken(tokens[i]);
@@ -349,7 +353,7 @@ contract Gauge {
             sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
         }
         if (_rewardRate > 0 && sp.supply > 0) {
-            reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * _rewardRate * PRECISION / sp.supply);
+            reward += ((lastTimeRewardApplicable(token) - Math.min(sp.timestamp, periodFinish[token])) * _rewardRate * PRECISION / sp.supply);
             _writeRewardPerTokenCheckpoint(token, reward, lastTimeRewardApplicable(token));
         }
 
@@ -367,19 +371,19 @@ contract Gauge {
 
         uint reward = 0;
 
-        if (_endIndex - _startIndex > 1) {
-            for (uint i = _startIndex; i < _endIndex-1; i++) {
+        //if (_endIndex - _startIndex > 1) {
+            for (uint i = _startIndex; i < _endIndex; i++) {
                 Checkpoint memory cp0 = checkpoints[account][i];
                 Checkpoint memory cp1 = checkpoints[account][i+1];
                 (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
                 (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
                 reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
             }
-        }
+        //}
 
-        Checkpoint memory cp = checkpoints[account][_endIndex];
+        /*Checkpoint memory cp = checkpoints[account][_endIndex];
         (uint _rewardPerTokenStored,) = getPriorRewardPerToken(token, cp.timestamp);
-        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][account])) / PRECISION;
+        reward += cp.balanceOf * (rewardPerToken(token) - Math.max(_rewardPerTokenStored, userRewardPerTokenStored[token][account])) / PRECISION;*/
 
         return reward;
     }
