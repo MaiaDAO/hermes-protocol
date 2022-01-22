@@ -426,6 +426,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
     uint256 constant WEEK = 1 weeks;
     uint256 constant MAXTIME = 4 * 365 * 86400;
+    int128 constant iMAXTIME = 4 * 365 * 86400;
     uint256 constant MULTIPLIER = 1 ether;
 
     address public token;
@@ -844,12 +845,12 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
             // Calculate slopes and biases
             // Kept at zero when they have to
             if (old_locked.end > block.timestamp && old_locked.amount > 0) {
-                u_old.slope = int128(int256(old_locked.amount) / int256(MAXTIME));
-                u_old.bias = u_old.slope * int128(int256(old_locked.end) - int256(block.timestamp));
+                u_old.slope = old_locked.amount / iMAXTIME;
+                u_old.bias = u_old.slope * int128(int256(old_locked.end - block.timestamp));
             }
             if (new_locked.end > block.timestamp && new_locked.amount > 0) {
-                u_new.slope = int128(int256(new_locked.amount) / int256(MAXTIME));
-                u_new.bias = u_new.slope * int128(int256(new_locked.end) - int256(block.timestamp));
+                u_new.slope = new_locked.amount / iMAXTIME;
+                u_new.bias = u_new.slope * int128(int256(new_locked.end - block.timestamp));
             }
 
             // Read values of scheduled changes in the slope
@@ -984,7 +985,9 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 supply_before = supply;
 
         supply = supply_before + _value;
-        LockedBalance memory old_locked = _locked;
+        LockedBalance memory old_locked;
+        old_locked.amount = _locked.amount;
+        old_locked.end = _locked.end;
         // Adding to existing lock, or if a lock is expired - creating a new one
         _locked.amount += int128(int256(_value));
         if (unlock_time != 0) {
@@ -1244,7 +1247,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param point The point (bias/slope) to start search from
     /// @param t Time to calculate the total voting power at
     /// @return Total voting power at that time
-    function supply_at(Point storage point, uint256 t) private view returns (uint256) {
+    function supply_at(Point memory point, uint256 t) private view returns (uint256) {
         Point memory last_point = point;
         uint256 t_i = (last_point.ts / WEEK) * WEEK;
         for (uint256 i = 0; i < 255; ++i) {
@@ -1272,14 +1275,14 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @notice Calculate total voting power
     /// @dev Adheres to the ERC20 `totalSupply` interface for Aragon compatibility
     /// @return Total voting power
-    function totalSupply(uint256 t) public view returns (uint256) {
+    function totalSupplyAtT(uint256 t) public view returns (uint256) {
         uint256 _epoch = epoch;
         Point storage last_point = point_history[_epoch];
         return supply_at(last_point, t);
     }
 
     function totalSupply() external view returns (uint256) {
-        return totalSupply(block.timestamp);
+        return totalSupplyAtT(block.timestamp);
     }
 
     /// @notice Calculate total voting power at some point in the past
