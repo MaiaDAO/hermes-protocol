@@ -577,7 +577,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     }
 
     /// @dev  Get token by index
-    function tokenByIndex(uint256 _tokenId) external view returns (uint256) {
+    function tokenByIndex(uint256 _tokenId) external pure returns (uint256) {
         return _tokenId;
     }
 
@@ -1174,7 +1174,11 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
             );
     }
 
-    function balanceOfNFT(uint256 _tokenId, uint256 _t) external view returns (uint256) {
+    function balanceOfNFT(uint256 _tokenId) external view returns (uint256) {
+        return _balanceOfNFT(_tokenId, block.timestamp);
+    }
+
+    function balanceOfNFTAt(uint256 _tokenId, uint256 _t) external view returns (uint256) {
         return _balanceOfNFT(_tokenId, _t);
     }
 

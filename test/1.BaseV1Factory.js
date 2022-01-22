@@ -53,11 +53,17 @@ describe("BaseV1Factory", function () {
     await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
     await ve_underlying.mint(owner.address, ethers.BigNumber.from("1000000000000000000000"));
-    vecontract = await ethers.getContractFactory("contracts/ve_mock.sol:ve");
+    vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
     await ust.deployed();
     await mim.deployed();
+  });
+
+  it("create lock", async function () {
+    await ve_underlying.approve(ve.address, ethers.BigNumber.from("1000000000000000000"));
+    await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);
+    expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("995063075414519385"));
   });
 
   it("confirm ust deployment", async function () {
