@@ -578,7 +578,7 @@ contract BaseV1Voter {
         updateFor(0, pools.length);
     }
 
-    function updateFor(address _gauge) external {
+    function updateGauge(address _gauge) external {
         _updateFor(_gauge);
     }
 

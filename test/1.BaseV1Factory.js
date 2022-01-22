@@ -53,7 +53,7 @@ describe("BaseV1Factory", function () {
     dai = await token.deploy('DAI', 'DAI', 18, owner.address);
     await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
-    await ve_underlying.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000"));
+    await ve_underlying.mint(owner.address, ethers.BigNumber.from("10000000000000000000000000"));
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
@@ -394,25 +394,32 @@ describe("BaseV1Factory", function () {
   });
 
   it("staking rewards sense check", async function () {
-    console.log(await gauge.rewardRate(ve_underlying.address));
-    console.log(await staking.rewardRate());
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
-    console.log(await staking.earned(owner.address));
+    expect(await gauge.rewardRate(ve_underlying.address)).to.be.equal(await staking.rewardRate());
   });
 
 
 
   it("minter mint", async function () {
     await minter.update_period();
+    await gauge_factory.updateGauge(gauge.address);
+    const claimable = await gauge_factory.claimable(gauge.address);
+    await ve_underlying.approve(staking.address, claimable);
+    await staking.notifyRewardAmount(claimable);
     await gauge_factory.distro();
+    await network.provider.send("evm_increaseTime", [1800])
+    await network.provider.send("evm_mine")
+    expect(await gauge.rewardRate(ve_underlying.address)).to.be.equal(await staking.rewardRate());
   });
 
   it("gauge claim rewards", async function () {
     await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await staking.withdraw(await staking._balances(owner.address));
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, 0);
     await gauge.getReward(owner.address, [ve_underlying.address]);
+    console.log(await gauge.earned(ve_underlying.address, owner.address));
+    console.log(await staking.earned(owner.address));
 
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
