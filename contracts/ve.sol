@@ -1047,7 +1047,10 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         require(block.timestamp >= _locked.end, "The lock didn't expire");
         uint256 value = uint256(int256(_locked.amount));
 
-        LockedBalance memory old_locked = _locked;
+        LockedBalance memory old_locked;
+        old_locked.amount = _locked.amount;
+        old_locked.end = _locked.end;
+
         _locked.end = 0;
         _locked.amount = 0;
         uint256 supply_before = supply;

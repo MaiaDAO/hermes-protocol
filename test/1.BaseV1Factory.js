@@ -42,18 +42,23 @@ describe("BaseV1Factory", function () {
   let ve_dist;
   let library;
   let staking;
+  let owner_1;
 
   it("deploy base coins", async function () {
-    [owner] = await ethers.getSigners();
+    [owner, owner2] = await ethers.getSigners(2);
     token = await ethers.getContractFactory("Token");
     ust = await token.deploy('ust', 'ust', 6, owner.address);
     await ust.mint(owner.address, ethers.BigNumber.from("1000000000000000000"));
+    await ust.mint(owner2.address, ethers.BigNumber.from("1000000000000000000"));
     mim = await token.deploy('MIM', 'MIM', 18, owner.address);
     await mim.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000000"));
+    await mim.mint(owner2.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     dai = await token.deploy('DAI', 'DAI', 18, owner.address);
     await dai.mint(owner.address, ethers.BigNumber.from("1000000000000000000000000000000"));
+    await dai.mint(owner2.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
     await ve_underlying.mint(owner.address, ethers.BigNumber.from("10000000000000000000000000"));
+    await ve_underlying.mint(owner2.address, ethers.BigNumber.from("10000000000000000000000000"));
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
@@ -417,9 +422,8 @@ describe("BaseV1Factory", function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, 0);
+    await staking.getReward();
     await gauge.getReward(owner.address, [ve_underlying.address]);
-    console.log(await gauge.earned(ve_underlying.address, owner.address));
-    console.log(await staking.earned(owner.address));
 
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
@@ -484,6 +488,17 @@ describe("BaseV1Factory", function () {
     await network.provider.send("evm_mine")
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
+  });
+
+  it("ve decay", async function () {
+
+    console.log(await ve.balanceOfNFT(1));
+    console.log(await ve.totalSupply());
+    await network.provider.send("evm_increaseTime", [4*365*86400])
+    await network.provider.send("evm_mine")
+    expect(await ve.balanceOfNFT(1)).to.be.equal(0);
+    expect(await ve.totalSupply()).to.be.equal(0);
+    await ve.withdraw(1);
   });
 
 });
