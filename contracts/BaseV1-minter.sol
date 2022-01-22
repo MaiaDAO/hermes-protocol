@@ -46,7 +46,6 @@ contract BaseV1Minter {
     uint public active_period;
 
     constructor(
-      //uint _available, // the minting target halfway point, assuming 500mm
       address __gauge_proxy, // the voting & distribution system
       address  __ve, // the ve(3,3) system that will be locked into
       address __ve_dist // the distribution system that ensures users aren't diluted
