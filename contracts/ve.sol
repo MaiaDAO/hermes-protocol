@@ -414,9 +414,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Mapping from owner address to mapping of operator addresses.
     mapping(address => mapping(address => bool)) ownerToOperators;
 
-    /// @dev Address of URI contract
-    string public tokenBaseURI;
-
     /// @dev Mapping of interface id to bool about whether or not it's supported
     mapping(bytes4 => bool) supportedInterfaces;
 
@@ -506,7 +503,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
     /// @dev Returns the address of the owner of the NFT.
     /// @param _tokenId The identifier for an NFT.
-    function ownerOf(uint256 _tokenId) external view returns (address) {
+    function ownerOf(uint256 _tokenId) public view returns (address) {
         return idToOwner[_tokenId];
     }
 
@@ -729,7 +726,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     ///      Throws if `_approved` is the current owner. (NOTE: This is not written the EIP)
     /// @param _approved Address to be approved for the given NFT ID.
     /// @param _tokenId ID of the token to be approved.
-    function approve(address _approved, uint256 _tokenId) external {
+    function approve(address _approved, uint256 _tokenId) public {
         address owner = idToOwner[_tokenId];
         // Throws if `_tokenId` is not a valid NFT
         assert(owner != address(0));
@@ -1063,6 +1060,9 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
         assert(IERC20(token).transfer(msg.sender, value));
 
+        // Burn the NFT
+        _burn(_tokenId);
+
         emit Withdraw(msg.sender, _tokenId, value, block.timestamp);
         emit Supply(supply_before, supply_before - value);
     }
@@ -1116,9 +1116,10 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Returns current token URI metadata
     /// @param _tokenId Token ID to fetch URI for.
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
+        require(idToOwner[_tokenId] != address(0), "Query for nonexistent token");
         LockedBalance storage _locked = locked[_tokenId];
         return
-            tokenURI(
+            _tokenURI(
                 _tokenId,
                 _balanceOfNFT(_tokenId, block.timestamp),
                 _locked.end,
@@ -1258,7 +1259,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         return supply_at(point, point.ts + dt);
     }
 
-    function tokenURI(uint _tokenId, uint _balanceOf, uint _locked_end, uint _value) public pure returns (string memory output) {
+    function _tokenURI(uint _tokenId, uint _balanceOf, uint _locked_end, uint _value) private pure returns (string memory output) {
         output = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" /><text x="10" y="20" class="base">';
         output = string(abi.encodePacked(output, "token ", toString(_tokenId), '</text><text x="10" y="40" class="base">'));
         output = string(abi.encodePacked(output, "balanceOf ", toString(_balanceOf), '</text><text x="10" y="60" class="base">'));
@@ -1289,5 +1290,18 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
             value /= 10;
         }
         return string(buffer);
+    }
+
+    function _burn(uint256 _tokenId) internal {
+        require(_isApprovedOrOwner(msg.sender, _tokenId), "caller is not owner nor approved");
+
+        address owner = ownerOf(_tokenId);
+
+        // Clear approval
+        approve(address(0), _tokenId);
+        // Remove token
+        _removeTokenFrom(msg.sender, _tokenId);
+
+        emit Transfer(owner, address(0), _tokenId);
     }
 }
