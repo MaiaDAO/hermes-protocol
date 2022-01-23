@@ -959,13 +959,13 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         assert(_isApprovedOrOwner(msg.sender, _from));
         assert(_isApprovedOrOwner(msg.sender, _to));
 
-        LockedBalance storage _locked0 = locked[_from];
-        LockedBalance storage _locked1 = locked[_to];
+        LockedBalance memory _locked0 = locked[_from];
+        LockedBalance memory _locked1 = locked[_to];
         uint256 value0 = uint256(int256(_locked0.amount));
         uint256 end = _locked0.end > _locked1.end ? _locked0.end : _locked1.end;
 
         _checkpoint(_from, _locked0, LockedBalance(0, 0));
-        _deposit_for(msg.sender, _to, value0, end, _locked1, DepositType.MERGE_TYPE, false);
+        _deposit_for(msg.sender, _to, value0, end, _locked1, DepositType.MERGE_TYPE, true);
     }
 
     /// @notice Record global data to checkpoint
@@ -979,7 +979,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _tokenId lock NFT
     /// @param _value Amount to add to user's lock
     function deposit_for(uint256 _tokenId, uint256 _value) external nonreentrant {
-        LockedBalance storage _locked = locked[_tokenId];
+        LockedBalance memory _locked = locked[_tokenId];
 
         assert(_value > 0); // dev: need non-zero value
         require(_locked.amount > 0, 'No existing lock found');
@@ -1002,7 +1002,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
         _mint(msg.sender, _tokenId);
 
-        LockedBalance storage _locked = locked[_tokenId];
+        LockedBalance memory _locked = locked[_tokenId];
 
         _deposit_for(msg.sender, _tokenId, _value, unlock_time, _locked, DepositType.CREATE_LOCK_TYPE, false);
         return _tokenId;
@@ -1013,7 +1013,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function increase_amount(uint256 _tokenId, uint256 _value) external nonreentrant {
         assert(_isApprovedOrOwner(msg.sender, _tokenId));
 
-        LockedBalance storage _locked = locked[_tokenId];
+        LockedBalance memory _locked = locked[_tokenId];
 
         assert(_value > 0); // dev: need non-zero value
         require(_locked.amount > 0, 'No existing lock found');
@@ -1027,7 +1027,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function increase_unlock_time(uint256 _tokenId, uint256 _lock_duration) external nonreentrant {
         assert(_isApprovedOrOwner(msg.sender, _tokenId));
 
-        LockedBalance storage _locked = locked[_tokenId];
+        LockedBalance memory _locked = locked[_tokenId];
         uint256 unlock_time = (block.timestamp + _lock_duration) / WEEK * WEEK; // Locktime is rounded down to weeks
 
         require(_locked.end > block.timestamp, 'Lock expired');
@@ -1043,7 +1043,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function withdraw(uint256 _tokenId) external nonreentrant {
         assert(_isApprovedOrOwner(msg.sender, _tokenId));
 
-        LockedBalance storage _locked = locked[_tokenId];
+        LockedBalance memory _locked = locked[_tokenId];
         require(block.timestamp >= _locked.end, "The lock didn't expire");
         uint256 value = uint256(int256(_locked.amount));
 
@@ -1116,7 +1116,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Returns current token URI metadata
     /// @param _tokenId Token ID to fetch URI for.
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
-        LockedBalance storage _locked = locked[_tokenId];
+        LockedBalance memory _locked = locked[_tokenId];
         return
             tokenURI(
                 _tokenId,
@@ -1226,7 +1226,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @return Total voting power
     function totalSupplyAtT(uint256 t) public view returns (uint256) {
         uint256 _epoch = epoch;
-        Point storage last_point = point_history[_epoch];
+        Point memory last_point = point_history[_epoch];
         return supply_at(last_point, t);
     }
 
@@ -1242,10 +1242,10 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 _epoch = epoch;
         uint256 target_epoch = find_block_epoch(_block, _epoch);
 
-        Point storage point = point_history[target_epoch];
+        Point memory point = point_history[target_epoch];
         uint256 dt = 0;
         if (target_epoch < _epoch) {
-            Point storage point_next = point_history[target_epoch + 1];
+            Point memory point_next = point_history[target_epoch + 1];
             if (point.blk != point_next.blk) {
                 dt = ((_block - point.blk) * (point_next.ts - point.ts)) / (point_next.blk - point.blk);
             }
