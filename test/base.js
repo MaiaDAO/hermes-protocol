@@ -342,7 +342,9 @@ describe("BaseV1Factory", function () {
     const pair_2000 = ethers.BigNumber.from("2000000000");
 
     await pair.connect(owner2).approve(gauge.address, pair_1000);
+    await pair.connect(owner2).approve(staking.address, pair_1000);
     await gauge.connect(owner2).deposit(pair_1000, 0);
+    await staking.connect(owner2).stake(pair_1000);
     expect(await gauge.totalSupply()).to.equal(pair_2000);
     expect(await gauge.earned(ve.address, owner2.address)).to.equal(0);
   });
@@ -350,10 +352,12 @@ describe("BaseV1Factory", function () {
   it("withdraw gauge stake", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await gauge.withdraw(await gauge.balanceOf(owner.address));
+    await gauge.connect(owner2).withdraw(await gauge.balanceOf(owner2.address));
     await staking.withdraw(await staking._balances(owner.address));
+    await staking.connect(owner2).withdraw(await staking._balances(owner2.address));
     await gauge2.withdraw(await gauge2.balanceOf(owner.address));
     await gauge3.withdraw(await gauge3.balanceOf(owner.address));
-    expect(await gauge.totalSupply()).to.equal(pair_1000);
+    expect(await gauge.totalSupply()).to.equal(0);
     expect(await gauge2.totalSupply()).to.equal(0);
     expect(await gauge3.totalSupply()).to.equal(0);
   });
@@ -380,7 +384,7 @@ describe("BaseV1Factory", function () {
     await pair.approve(gauge.address, supply);
     await gauge.deposit(supply, 1);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
-    expect(await gauge.totalSupply()).to.equal(pair_1000);
+    expect(await gauge.totalSupply()).to.equal(0);
     await pair.approve(gauge.address, supply);
     await gauge.deposit(pair_1000, 1);
     await pair.approve(staking.address, supply);
@@ -502,8 +506,39 @@ describe("BaseV1Factory", function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     await pair.approve(gauge.address, pair_1000);
     await gauge.deposit(pair_1000, 0);
+    console.log(await staking.earned(owner.address));
     await staking.getReward();
+    const before = await ve_underlying.balanceOf(owner.address)
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    lastEarn = await gauge.lastEarn(ve_underlying.address, owner.address)
+    console.log("lastEarn", lastEarn);
+    console.log("_startIndex", await gauge.getPriorBalanceIndex(owner.address, lastEarn));
+    console.log("_endIndex", await gauge.numCheckpoints(owner.address));
+    await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
+    lastEarn = await gauge.lastEarn(ve_underlying.address, owner.address)
+    console.log("lastEarn", lastEarn);
+    console.log("_startIndex", await gauge.getPriorBalanceIndex(owner.address, lastEarn));
+    console.log("_endIndex", await gauge.numCheckpoints(owner.address));
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
+    lastEarn = await gauge.lastEarn(ve_underlying.address, owner.address)
+    console.log("lastEarn", lastEarn);
+    console.log("_startIndex", await gauge.getPriorBalanceIndex(owner.address, lastEarn));
+    console.log("_endIndex", await gauge.numCheckpoints(owner.address));
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    const earned = await gauge.earned(ve_underlying.address, owner.address);
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
+    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    const after = await ve_underlying.balanceOf(owner.address)
+    const received = after.sub(before);
+    expect(received).to.be.above(earned)
+    console.log(earned);
+    console.log(received);
 
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);

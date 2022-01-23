@@ -61,6 +61,7 @@ contract Gauge {
 
     mapping(address => mapping(address => uint)) public lastEarn;
     mapping(address => mapping(address => uint)) public userRewardPerTokenStored;
+    mapping(address => mapping(address => uint)) public userRewards;
 
     mapping(address => uint) public tokenIds;
 
@@ -279,26 +280,33 @@ contract Gauge {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
+    function batchUserRewards(address token, address account, uint maxRuns) external {
+        rewardPerTokenStored[token] = _updateRewardPerToken(token);
+        lastUpdateTime[token] = lastTimeRewardApplicable(token);
+        (userRewards[token][account], lastEarn[token][account]) = _batchUserRewards(token, account, maxRuns);
+    }
+
     function getReward(address account, address[] memory tokens) public lock {
-      require(msg.sender == account || msg.sender == voter);
-      for (uint i = 0; i < tokens.length; i++) {
-          rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
-          lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+        require(msg.sender == account || msg.sender == voter);
+        for (uint i = 0; i < tokens.length; i++) {
+            rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
+            lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
 
-          uint _reward = earned(tokens[i], account);
-          lastEarn[tokens[i]][account] = block.timestamp;
-          userRewardPerTokenStored[tokens[i]][account] = rewardPerToken(tokens[i]);
-          if (_reward > 0) _safeTransfer(tokens[i], account, _reward);
-      }
+            uint _reward = earned(tokens[i], account);
+            userRewards[tokens[i]][account] = 0;
+            lastEarn[tokens[i]][account] = block.timestamp;
+            userRewardPerTokenStored[tokens[i]][account] = rewardPerToken(tokens[i]);
+            if (_reward > 0) _safeTransfer(tokens[i], account, _reward);
+        }
 
-      uint _derivedBalance = derivedBalances[account];
-      derivedSupply -= _derivedBalance;
-      _derivedBalance = derivedBalance(account);
-      derivedBalances[account] = _derivedBalance;
-      derivedSupply += _derivedBalance;
+        uint _derivedBalance = derivedBalances[account];
+        derivedSupply -= _derivedBalance;
+        _derivedBalance = derivedBalance(account);
+        derivedBalances[account] = _derivedBalance;
+        derivedSupply += _derivedBalance;
 
-      _writeCheckpoint(account, derivedBalances[account]);
-      _writeSupplyCheckpoint();
+        _writeCheckpoint(account, derivedBalances[account]);
+        _writeSupplyCheckpoint();
     }
 
 
@@ -319,6 +327,65 @@ contract Gauge {
             _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
         }
         return Math.min(_derived + _adjusted, _balance);
+    }
+
+    function _batchUserRewards(address token, address account, uint maxRuns) internal view returns (uint, uint) {
+        uint _startTimestamp = lastEarn[token][account];
+        if (numCheckpoints[account] == 0) {
+            return (userRewards[token][account], _startTimestamp);
+        }
+
+        uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
+        uint _endIndex = Math.min(numCheckpoints[account]-1, maxRuns);
+
+        uint reward = userRewards[token][account];
+
+        Checkpoint memory cp0;
+        Checkpoint memory cp1;
+        for (uint i = _startIndex; i < _endIndex; i++) {
+            cp0 = checkpoints[account][i];
+            cp1 = checkpoints[account][i+1];
+            (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
+            (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
+            reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
+            _startTimestamp = cp1.timestamp;
+        }
+
+        return (reward, _startTimestamp);
+    }
+
+    function batchRewardPerToken(address token, uint maxRuns) external {
+        (rewardPerTokenStored[token], lastUpdateTime[token])  = _batchRewardPerToken(token, maxRuns);
+    }
+
+    function _batchRewardPerToken(address token, uint maxRuns) internal returns (uint, uint) {
+        uint _startTimestamp = lastUpdateTime[token];
+        uint reward = rewardPerTokenStored[token];
+
+        if (supplyNumCheckpoints == 0) {
+            return (reward, _startTimestamp);
+        }
+
+        uint _startIndex = getPriorSupplyIndex(_startTimestamp);
+        uint _endIndex = Math.min(supplyNumCheckpoints-1, maxRuns);
+        uint _rewardRate = rewardRate[token];
+
+        SupplyCheckpoint memory sp0;
+        SupplyCheckpoint memory sp1;
+        for (uint i = _startIndex; i < _endIndex; i++) {
+            sp0 = supplyCheckpoints[i];
+            if (i == _startIndex) {
+                sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
+            }
+            sp1 = supplyCheckpoints[i+1];
+            if (_rewardRate > 0 && sp0.supply > 0) {
+              reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
+              _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
+            }
+            _startTimestamp = sp1.timestamp;
+        }
+
+        return (reward, _startTimestamp);
     }
 
     function _updateRewardPerToken(address token) internal returns (uint) {
@@ -359,19 +426,20 @@ contract Gauge {
         return reward;
     }
 
+    // earned is an estimation, it won't be exact till the supply > rewardPerToken calculations have run
     function earned(address token, address account) public view returns (uint) {
         uint _startTimestamp = lastEarn[token][account];
         if (numCheckpoints[account] == 0) {
-            return 0;
+            return userRewards[token][account];
         }
 
         uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
         uint _endIndex = numCheckpoints[account]-1;
 
-        uint reward = 0;
+        uint reward = userRewards[token][account];
 
         if (_endIndex - _startIndex > 1) {
-            for (uint i = _startIndex; i < _endIndex; i++) {
+            for (uint i = _startIndex; i < _endIndex-1; i++) {
                 Checkpoint memory cp0 = checkpoints[account][i];
                 Checkpoint memory cp1 = checkpoints[account][i+1];
                 (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
