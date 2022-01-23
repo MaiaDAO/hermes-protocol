@@ -79,6 +79,8 @@ describe("BaseV1Factory", function () {
     expect(await ve.balanceOfNFT(2)).to.above(ethers.BigNumber.from("995063075414519385"));
     expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("2000000000000000000"));
     await ve.merge(2, 1);
+    expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("1995063075414519385"));
+    expect(await ve.balanceOfNFT(2)).to.equal(ethers.BigNumber.from("0"));
   });
 
   it("confirm ust deployment", async function () {
