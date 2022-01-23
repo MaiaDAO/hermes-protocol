@@ -237,28 +237,36 @@ describe("washtrade", function () {
     expect(await bribe3.balanceOf(1)).to.not.equal(0);
   });
 
-  it("gauge distribute based on voting", async function () {
-    const pair_1000 = ethers.BigNumber.from("1000000000");
-    await ve_underlying.approve(gauge_factory.address, pair_1000);
-    await gauge_factory.notifyRewardAmount(pair_1000);
-    await gauge_factory.updateAll();
-    await gauge_factory.distro();
-  });
-
   it("bribe claim rewards", async function () {
-    await bribe3.getReward(1, [ve_underlying.address]);
+    await bribe3.getReward(1, [mim.address, dai.address]);
     await network.provider.send("evm_increaseTime", [691200])
     await network.provider.send("evm_mine")
-    await bribe3.getReward(1, [ve_underlying.address]);
+    await bribe3.getReward(1, [mim.address, dai.address]);
   });
 
   it("distribute and claim fees", async function () {
 
     await network.provider.send("evm_increaseTime", [691200])
     await network.provider.send("evm_mine")
-    await bribe3.getReward(1, [mim.address, ust.address]);
+    await bribe3.getReward(1, [mim.address, dai.address]);
 
     await gauge_factory.distributeFees([gauge3.address])
+  });
+
+  it("bribe claim rewards", async function () {
+    console.log(await bribe3.earned(mim.address, 1));
+    console.log(await mim.balanceOf(owner.address));
+    console.log(await mim.balanceOf(bribe3.address));
+    await bribe3.getReward(1, [mim.address, dai.address]);
+    await network.provider.send("evm_increaseTime", [691200])
+    await network.provider.send("evm_mine")
+    console.log(await bribe3.earned(mim.address, 1));
+    console.log(await mim.balanceOf(owner.address));
+    console.log(await mim.balanceOf(bribe3.address));
+    await bribe3.getReward(1, [mim.address, dai.address]);
+    console.log(await bribe3.earned(mim.address, 1));
+    console.log(await mim.balanceOf(owner.address));
+    console.log(await mim.balanceOf(bribe3.address));
   });
 
 });
