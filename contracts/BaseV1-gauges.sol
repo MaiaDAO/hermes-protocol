@@ -314,7 +314,7 @@ contract Gauge {
         if (derivedSupply == 0) {
             return rewardPerTokenStored[token];
         }
-        return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / derivedSupply);
+        return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - Math.min(lastUpdateTime[token], periodFinish[token])) * rewardRate[token] * PRECISION / derivedSupply);
     }
 
     function derivedBalance(address account) public view returns (uint) {

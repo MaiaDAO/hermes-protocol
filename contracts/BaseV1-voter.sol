@@ -309,7 +309,7 @@ contract Bribe {
         if (totalSupply == 0) {
             return rewardPerTokenStored[token];
         }
-        return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - lastUpdateTime[token]) * rewardRate[token] * PRECISION / totalSupply);
+        return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - Math.min(lastUpdateTime[token], periodFinish[token])) * rewardRate[token] * PRECISION / totalSupply);
     }
 
     function _batchUserRewards(address token, uint tokenId, uint maxRuns) internal view returns (uint, uint) {
