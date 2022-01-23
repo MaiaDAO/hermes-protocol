@@ -965,11 +965,11 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 value0 = uint256(int256(_locked0.amount));
         uint256 end = _locked0.end > _locked1.end ? _locked0.end : _locked1.end;
 
+        _checkpoint(_from, _locked0, LockedBalance(0, 0));
+
         _locked0.amount = 0;
         _locked0.end = 0;
-        locked[_from] = _locked;
-
-        _checkpoint(_from, _locked0, LockedBalance(0, 0));
+        locked[_from] = _locked0;
         _burn(_from);
         _deposit_for(msg.sender, _to, value0, end, _locked1, DepositType.MERGE_TYPE, true);
     }
