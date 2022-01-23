@@ -1055,6 +1055,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
         _locked.end = 0;
         _locked.amount = 0;
+        locked[_tokenId] = _locked;
         uint256 supply_before = supply;
         supply = supply_before - value;
 
