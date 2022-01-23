@@ -379,6 +379,8 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     uint256 public supply;
     mapping(uint256 => LockedBalance) public locked;
 
+    mapping(uint => uint) public ownership_change;
+
     uint256 public epoch;
     mapping(uint256 => Point) public point_history; // epoch -> unsigned point
     mapping(uint256 => Point[1000000000]) public user_point_history; // user -> Point[user_epoch]
@@ -643,6 +645,8 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         _removeTokenFrom(_from, _tokenId);
         // Add NFT
         _addTokenTo(_to, _tokenId);
+        // Set the block of ownership transfer (for Flash NFT protection)
+        ownership_change[_tokenId] = block.number;
         // Log the transfer
         emit Transfer(_from, _to, _tokenId);
     }
@@ -1129,6 +1133,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     }
 
     function balanceOfNFT(uint256 _tokenId) external view returns (uint256) {
+        if (ownership_change[_tokenId] == block.number) return 0;
         return _balanceOfNFT(_tokenId, block.timestamp);
     }
 
