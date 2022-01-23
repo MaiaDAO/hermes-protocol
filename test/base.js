@@ -17,7 +17,7 @@ function getCreate2Address(
   return getAddress(`0x${keccak256(sanitizedInputs).slice(-40)}`)
 }
 
-describe("BaseV1Factory", function () {
+describe("core", function () {
 
   let token;
   let ust;
@@ -646,12 +646,6 @@ describe("BaseV1Factory", function () {
     await pair.connect(owner3).approve(gauge.address, pair_1000);
     await gauge.connect(owner3).deposit(pair_1000, 1);
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
-  });
-
-  it("oracle", async function () {
-    const pair_1000 = ethers.BigNumber.from("1000000000");
-
-    console.log(await pair.current(ust.address, pair_1000));
   });
 
 });
