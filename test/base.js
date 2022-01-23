@@ -648,4 +648,10 @@ describe("BaseV1Factory", function () {
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
   });
 
+  it("oracle", async function () {
+    const pair_1000 = ethers.BigNumber.from("1000000000");
+
+    console.log(await pair.current(ust.address, pair_1000));
+  });
+
 });
