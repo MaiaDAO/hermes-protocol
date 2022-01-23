@@ -1,9 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("VE", function () {
+describe("ve", function () {
   let token;
-  let tokenizer;
   let ve_underlying;
   let ve;
   let owner;
@@ -52,6 +51,30 @@ describe("VE", function () {
     await ve.withdraw(tokenId);
 
     expect(await ve_underlying.balance(owner.address)).to.equal(ve_underlying_amount);
+    // Check that the NFT is burnt
+    expect(await ve.balanceOfNFT(tokenId)).to.equal(0);
+    expect(await ve.ownerOf(tokenId)).to.equal(ethers.constants.AddressZero);
+  });
+
+  it("check tokenURI calls", async function () {
+    // tokenURI should not work for non-existent token ids
+    await expect(ve.tokenURI(999)).to.be.reverted;
+    await ve_underlying.approve(ve.address, ve_underlying_amount);
+    const lockDuration = 7 * 24 * 3600; // 1 week
+    await ve.create_lock(ve_underlying_amount, lockDuration);
+
+    const tokenId = 1;
+    ethers.provider.send("evm_increaseTime", [lockDuration]);
+    ethers.provider.send("evm_mine"); // mine the next block
+
+    // Just check that this doesn't revert
+    await ve.tokenURI(tokenId);
+
+    // Withdraw, which destroys the NFT
+    await ve.withdraw(tokenId);
+
+    // tokenURI should not work for this anymore as the NFT is burnt
+    await expect(ve.tokenURI(tokenId)).to.be.reverted;
   });
 
   it("Confirm supportsInterface works with expected interfaces", async function () {
