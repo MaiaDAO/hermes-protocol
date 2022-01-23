@@ -509,31 +509,16 @@ describe("BaseV1Factory", function () {
     console.log(await staking.earned(owner.address));
     await staking.getReward();
     const before = await ve_underlying.balanceOf(owner.address)
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
-    lastEarn = await gauge.lastEarn(ve_underlying.address, owner.address)
-    console.log("lastEarn", lastEarn);
-    console.log("_startIndex", await gauge.getPriorBalanceIndex(owner.address, lastEarn));
-    console.log("_endIndex", await gauge.numCheckpoints(owner.address));
     await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
-    lastEarn = await gauge.lastEarn(ve_underlying.address, owner.address)
-    console.log("lastEarn", lastEarn);
-    console.log("_startIndex", await gauge.getPriorBalanceIndex(owner.address, lastEarn));
-    console.log("_endIndex", await gauge.numCheckpoints(owner.address));
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
     await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
-    lastEarn = await gauge.lastEarn(ve_underlying.address, owner.address)
-    console.log("lastEarn", lastEarn);
-    console.log("_startIndex", await gauge.getPriorBalanceIndex(owner.address, lastEarn));
-    console.log("_endIndex", await gauge.numCheckpoints(owner.address));
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
     await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
-    await gauge.batchUserRewards(ve_underlying.address, owner.address, 200);
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
     const earned = await gauge.earned(ve_underlying.address, owner.address);
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
     await gauge.getReward(owner.address, [ve_underlying.address]);
-    console.log(await gauge.rewardPerTokenNumCheckpoints(ve_underlying.address));
     const after = await ve_underlying.balanceOf(owner.address)
     const received = after.sub(before);
     expect(received).to.be.above(earned)
