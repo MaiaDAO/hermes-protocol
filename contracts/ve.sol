@@ -625,7 +625,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
     /// @dev Exeute transfer of a NFT.
     ///      Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
-    ///      address for this NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
+    ///      address for this NFT. (NOTE: `msg.sender` not allowed in internal function so pass `_sender`.)
     ///      Throws if `_to` is the zero address.
     ///      Throws if `_from` is not the current owner.
     ///      Throws if `_tokenId` is not a valid NFT.
@@ -962,6 +962,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 end = _locked0.end > _locked1.end ? _locked0.end : _locked1.end;
 
         _checkpoint(_from, _locked0, LockedBalance(0, 0));
+        _burn(_from);
         _deposit_for(msg.sender, _to, value0, end, _locked1, DepositType.MERGE_TYPE, true);
     }
 
@@ -1075,7 +1076,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _block Block to find
     /// @param max_epoch Don't go beyond this epoch
     /// @return Approximate timestamp for block
-    function find_block_epoch(uint256 _block, uint256 max_epoch) private view returns (uint256) {
+    function _find_block_epoch(uint256 _block, uint256 max_epoch) internal view returns (uint256) {
         // Binary search
         uint256 _min = 0;
         uint256 _max = max_epoch;
@@ -1099,7 +1100,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _tokenId NFT for lock
     /// @param _t Epoch time to return voting power at
     /// @return User voting power
-    function _balanceOfNFT(uint256 _tokenId, uint256 _t) private view returns (uint256) {
+    function _balanceOfNFT(uint256 _tokenId, uint256 _t) internal view returns (uint256) {
         uint256 _epoch = user_point_epoch[_tokenId];
         if (_epoch == 0) {
             return 0;
@@ -1140,7 +1141,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _tokenId User's wallet NFT
     /// @param _block Block to calculate the voting power at
     /// @return Voting power
-    function _balanceOfAtNFT(uint256 _tokenId, uint256 _block) private view returns (uint256) {
+    function _balanceOfAtNFT(uint256 _tokenId, uint256 _block) internal view returns (uint256) {
         // Copying and pasting totalSupply code because Vyper cannot pass by
         // reference yet
         assert(_block <= block.number);
@@ -1164,7 +1165,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         Point memory upoint = user_point_history[_tokenId][_min];
 
         uint256 max_epoch = epoch;
-        uint256 _epoch = find_block_epoch(_block, max_epoch);
+        uint256 _epoch = _find_block_epoch(_block, max_epoch);
         Point memory point_0 = point_history[_epoch];
         uint256 d_block = 0;
         uint256 d_t = 0;
@@ -1197,7 +1198,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param point The point (bias/slope) to start search from
     /// @param t Time to calculate the total voting power at
     /// @return Total voting power at that time
-    function supply_at(Point memory point, uint256 t) private view returns (uint256) {
+    function _supply_at(Point memory point, uint256 t) internal view returns (uint256) {
         Point memory last_point = point;
         uint256 t_i = (last_point.ts / WEEK) * WEEK;
         for (uint256 i = 0; i < 255; ++i) {
@@ -1228,7 +1229,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function totalSupplyAtT(uint256 t) public view returns (uint256) {
         uint256 _epoch = epoch;
         Point memory last_point = point_history[_epoch];
-        return supply_at(last_point, t);
+        return _supply_at(last_point, t);
     }
 
     function totalSupply() external view returns (uint256) {
@@ -1241,7 +1242,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function totalSupplyAt(uint256 _block) external view returns (uint256) {
         assert(_block <= block.number);
         uint256 _epoch = epoch;
-        uint256 target_epoch = find_block_epoch(_block, _epoch);
+        uint256 target_epoch = _find_block_epoch(_block, _epoch);
 
         Point memory point = point_history[target_epoch];
         uint256 dt = 0;
@@ -1256,10 +1257,10 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
             }
         }
         // Now dt contains info on how far are we beyond point
-        return supply_at(point, point.ts + dt);
+        return _supply_at(point, point.ts + dt);
     }
 
-    function _tokenURI(uint _tokenId, uint _balanceOf, uint _locked_end, uint _value) private pure returns (string memory output) {
+    function _tokenURI(uint _tokenId, uint _balanceOf, uint _locked_end, uint _value) internal pure returns (string memory output) {
         output = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" /><text x="10" y="20" class="base">';
         output = string(abi.encodePacked(output, "token ", toString(_tokenId), '</text><text x="10" y="40" class="base">'));
         output = string(abi.encodePacked(output, "balanceOf ", toString(_balanceOf), '</text><text x="10" y="60" class="base">'));
