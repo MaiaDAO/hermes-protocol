@@ -86,8 +86,7 @@ describe("core", function () {
     await ve.merge(2, 1);
     expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("1995063075414519385"));
     expect(await ve.balanceOfNFT(2)).to.equal(ethers.BigNumber.from("0"));
-    console.log(await ve.locked(2));
-    expect(await ve.locked(2).amount).to.equal(ethers.BigNumber.from("0"));
+    expect((await ve.locked(2)).amount).to.equal(ethers.BigNumber.from("0"));
   });
 
   it("confirm ust deployment", async function () {
