@@ -13,12 +13,16 @@ library Math {
 interface ve {
     function token() external view returns (address);
     function totalSupply() external view returns (uint);
+    function create_lock(uint, uint) external returns (uint);
+    function transferFrom(address, address, uint) external;
 }
 
 interface underlying {
     function approve(address spender, uint value) external returns (bool);
     function mint(address, uint) external;
     function totalSupply() external view returns (uint);
+    function balanceOf(address) external view returns (uint);
+    function burn(address, uint) external;
 }
 
 interface gauge_proxy {
@@ -44,16 +48,35 @@ contract BaseV1Minter {
     ve_dist public immutable _ve_dist;
     uint public weekly = 20000000e18;
     uint public active_period;
+    uint constant lock = 86400 * 7 * 52 * 4;
+
+    address initializer;
 
     constructor(
-      address __gauge_proxy, // the voting & distribution system
-      address  __ve, // the ve(3,3) system that will be locked into
-      address __ve_dist // the distribution system that ensures users aren't diluted
+        address __gauge_proxy, // the voting & distribution system
+        address  __ve, // the ve(3,3) system that will be locked into
+        address __ve_dist // the distribution system that ensures users aren't diluted
     ) {
+        initializer = msg.sender;
         _token = underlying(ve(__ve).token());
         _gauge_proxy = gauge_proxy(__gauge_proxy);
         _ve = ve(__ve);
         _ve_dist = ve_dist(__ve_dist);
+    }
+
+    function initialize(
+        address[] memory claimants,
+        uint[] memory amounts,
+        uint max
+    ) external {
+        require(initializer == msg.sender);
+        _token.mint(address(this), max);
+        _token.approve(address(_ve), type(uint).max);
+        for (uint i = 0; i < claimants.length; i++) {
+            uint id = _ve.create_lock(amounts[i], lock);
+            _ve.transferFrom(address(this), claimants[i], id);
+        }
+        initializer = address(0);
     }
 
     // calculate circulating supply as total token supply - locked supply

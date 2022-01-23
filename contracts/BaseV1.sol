@@ -35,7 +35,7 @@ contract BaseV1 {
         }
 
         // This is just a random ERC20 for testing, don't review
-        
+
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
@@ -124,7 +124,7 @@ contract BaseV1 {
     }
 
     function burn(address account, uint256 amount) external returns (bool) {
-        require(msg.sender == _getRouter());
+        require(msg.sender == _getRouter() || account == msg.sender);
         totalSupply -= amount;
         balanceOf[account] -= amount;
 
