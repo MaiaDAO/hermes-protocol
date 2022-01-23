@@ -246,19 +246,16 @@ contract BaseV1Pair {
         (address _token0, address _token1, bool _stable) = BaseV1Factory(msg.sender).getInitializable();
         (token0, token1, stable) = (_token0, _token1, _stable);
         fees = address(new BaseV1Fees(_token0, _token1));
-        uint _decimals0 = 1;
-        uint _decimals1 = 1;
         if (_stable) {
-            _decimals0 = 10**erc20(_token0).decimals();
-            _decimals1 = 10**erc20(_token1).decimals();
             name = string(abi.encodePacked("StableV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
             symbol = string(abi.encodePacked("sAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
         } else {
             name = string(abi.encodePacked("VolatileV1 AMM - ", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
             symbol = string(abi.encodePacked("vAMM-", erc20(_token0).symbol(), "/", erc20(_token1).symbol()));
         }
-        decimals0 = _decimals0;
-        decimals1 = _decimals1;
+
+        decimals0 = 10**erc20(_token0).decimals();
+        decimals1 = 10**erc20(_token1).decimals();
 
         observations.push(Observation(uint32(block.timestamp % 2**32), 0, 0));
     }
@@ -267,7 +264,7 @@ contract BaseV1Pair {
     uint _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
-        _unlocked = 0;
+        _unlocked = 2;
         _;
         _unlocked = 1;
     }

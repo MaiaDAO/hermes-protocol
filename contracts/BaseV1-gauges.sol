@@ -120,7 +120,7 @@ contract Gauge {
     uint _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
-        _unlocked = 0;
+        _unlocked = 2;
         _;
         _unlocked = 1;
     }

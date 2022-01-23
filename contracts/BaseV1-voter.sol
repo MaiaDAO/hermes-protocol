@@ -110,9 +110,14 @@ contract Bribe {
     uint _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
-        _unlocked = 0;
+        _unlocked = 2;
         _;
         _unlocked = 1;
+    }
+
+    constructor() {
+        factory = msg.sender;
+        _ve = BaseV1Voter(msg.sender)._ve();
     }
 
     /**
@@ -266,6 +271,9 @@ contract Bribe {
     function getReward(uint tokenId, address[] memory tokens) public lock  {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
         for (uint i = 0; i < tokens.length; i++) {
+            rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
+            lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+
             uint _reward = earned(tokens[i], tokenId);
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerToken(tokens[i]);
@@ -278,17 +286,14 @@ contract Bribe {
         require(msg.sender == factory);
         address _owner = ve(_ve).ownerOf(tokenId);
         for (uint i = 0; i < tokens.length; i++) {
+            rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
+            lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+
             uint _reward = earned(tokens[i], tokenId);
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerToken(tokens[i]);
             if (_reward > 0) _safeTransfer(tokens[i], _owner, _reward);
         }
-    }
-
-
-    constructor() {
-        factory = msg.sender;
-        _ve = BaseV1Voter(msg.sender)._ve();
     }
 
     function rewardPerToken(address token) public view returns (uint) {
@@ -330,7 +335,7 @@ contract Bribe {
             sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
         }
         if (_rewardRate > 0 && sp.supply > 0) {
-            reward += ((lastTimeRewardApplicable(token) - sp.timestamp) * _rewardRate * PRECISION / sp.supply);
+            reward += ((lastTimeRewardApplicable(token) - Math.min(sp.timestamp, periodFinish[token])) * _rewardRate * PRECISION / sp.supply);
             _writeRewardPerTokenCheckpoint(token, reward, lastTimeRewardApplicable(token));
         }
 
@@ -389,7 +394,6 @@ contract Bribe {
     function notifyRewardAmount(address token, uint amount) external lock {
         rewardPerTokenStored[token] = _updateRewardPerToken(token);
         lastUpdateTime[token] = block.timestamp;
-        _writeRewardPerTokenCheckpoint(token, rewardPerTokenStored[token], lastUpdateTime[token]);
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);
@@ -435,7 +439,7 @@ contract BaseV1Voter {
     uint _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
-        _unlocked = 0;
+        _unlocked = 2;
         _;
         _unlocked = 1;
     }
