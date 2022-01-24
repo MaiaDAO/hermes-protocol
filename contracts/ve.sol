@@ -990,7 +990,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         assert(_value > 0); // dev: need non-zero value
         require(_locked.amount > 0, 'No existing lock found');
         require(_locked.end > block.timestamp, 'Cannot add to expired lock. Withdraw');
-        _deposit_for(msg.sender, _tokenId, _value, 0, locked[_tokenId], DepositType.DEPOSIT_FOR_TYPE, false);
+        _deposit_for(msg.sender, _tokenId, _value, 0, _locked, DepositType.DEPOSIT_FOR_TYPE, false);
     }
 
     /// @notice Deposit `_value` tokens for `msg.sender` and lock for `_lock_duration`
@@ -1005,12 +1005,9 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
         ++tokenId;
         uint256 _tokenId = tokenId;
-
         _mint(msg.sender, _tokenId);
 
-        LockedBalance memory _locked = locked[_tokenId];
-
-        _deposit_for(msg.sender, _tokenId, _value, unlock_time, _locked, DepositType.CREATE_LOCK_TYPE, false);
+        _deposit_for(msg.sender, _tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE, false);
         return _tokenId;
     }
 
