@@ -413,13 +413,13 @@ contract Bribe {
     function earned(address token, uint tokenId) public view returns (uint) {
         uint _startTimestamp = lastEarn[token][tokenId];
         if (numCheckpoints[tokenId] == 0) {
-            return 0;
+            return userRewards[token][tokenId];
         }
 
         uint _startIndex = getPriorBalanceIndex(tokenId, _startTimestamp);
         uint _endIndex = numCheckpoints[tokenId]-1;
 
-        uint reward = 0;
+        uint reward = userRewards[token][tokenId];
 
         if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
@@ -517,7 +517,7 @@ contract BaseV1Voter {
     mapping(address => address) public bribes; // gauge => bribe
     mapping(address => uint) public weights; // pool => weight
     mapping(uint => mapping(address => uint)) public votes; // nft => pool => votes
-    mapping(uint => address[]) public poolVote;// nft => pools
+    mapping(uint => address[]) public poolVote; // nft => pools
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
 
     constructor(address __ve, address _factory, address  _gauges) {
@@ -608,6 +608,7 @@ contract BaseV1Voter {
         require(IBaseV1Factory(factory).isPair(_pool), "!_pool");
         address _bribe = address(new Bribe());
         address _gauge = IBaseV1GaugeFactory(gaugefactory).createGauge(_pool, _bribe, _ve);
+        erc20(base).approve(_gauge, type(uint).max);
         bribes[_gauge] = _bribe;
         gauges[_pool] = _gauge;
         poolForGauge[_gauge] = _pool;
@@ -624,8 +625,7 @@ contract BaseV1Voter {
     mapping(address => uint) internal supplyIndex;
     mapping(address => uint) public claimable;
 
-    // Accrue fees on token0
-    function notifyRewardAmount(uint amount) public lock {
+    function notifyRewardAmount(uint amount) external lock {
         _safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
         uint256 _ratio = amount * 1e18 / totalWeight; // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
@@ -695,8 +695,6 @@ contract BaseV1Voter {
         uint _left = IGauge(_gauge).left(base);
         if (_claimable > _left) {
             claimable[_gauge] = 0;
-            erc20(base).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
-            erc20(base).approve(_gauge, _claimable);
             IGauge(_gauge).notifyRewardAmount(base, _claimable);
         }
     }
