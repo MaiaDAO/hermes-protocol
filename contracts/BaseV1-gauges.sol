@@ -337,12 +337,9 @@ contract Gauge {
         uint _endIndex = Math.min(numCheckpoints[account]-1, maxRuns);
 
         uint reward = userRewards[token][account];
-
-        Checkpoint memory cp0;
-        Checkpoint memory cp1;
         for (uint i = _startIndex; i < _endIndex; i++) {
-            cp0 = checkpoints[account][i];
-            cp1 = checkpoints[account][i+1];
+            Checkpoint memory cp0 = checkpoints[account][i];
+            Checkpoint memory cp1 = checkpoints[account][i+1];
             (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
             (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
             reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
@@ -366,7 +363,6 @@ contract Gauge {
 
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = Math.min(supplyNumCheckpoints-1, maxRuns);
-        uint _rewardRate = rewardRate[token];
 
         for (uint i = _startIndex; i < _endIndex; i++) {
             SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
@@ -374,7 +370,7 @@ contract Gauge {
                 sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
             }
             SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
-            if (_rewardRate > 0 && sp0.supply > 0) {
+            if (sp0.supply > 0) {
                 reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
                 _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
             }
