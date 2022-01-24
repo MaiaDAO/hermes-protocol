@@ -793,12 +793,11 @@ def deposit_for(_tokenId: uint256, _value: uint256):
 
 @external
 @nonreentrant('lock')
-def create_lock(_value: uint256, _lock_duration: uint256, _addr: address = msg.sender) -> uint256:
+def create_lock(_value: uint256, _lock_duration: uint256) -> uint256:
     """
-    @notice Deposit `_value` tokens for `_addr` and lock for `_lock_duration`
+    @notice Deposit `_value` tokens for `msg.sender` and lock for `_lock_duration`
     @param _value Amount to deposit
     @param _lock_duration Number of seconds to lock tokens for (rounded down to nearest week)
-    @param _addr Address to deposit
     """
     unlock_time: uint256 = (block.timestamp + _lock_duration) / WEEK * WEEK  # Locktime is rounded down to weeks
 
@@ -809,11 +808,11 @@ def create_lock(_value: uint256, _lock_duration: uint256, _addr: address = msg.s
     self.tokenId += 1
     _tokenId: uint256 = self.tokenId
 
-    self._mint(_addr, _tokenId)
+    self._mint(msg.sender, _tokenId)
 
     _locked: LockedBalance = self.locked[_tokenId]
 
-    self._deposit_for(_addr, _tokenId, _value, unlock_time, _locked, CREATE_LOCK_TYPE)
+    self._deposit_for(msg.sender, _tokenId, _value, unlock_time, _locked, CREATE_LOCK_TYPE)
     return _tokenId
 
 
