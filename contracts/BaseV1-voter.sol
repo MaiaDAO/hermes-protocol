@@ -722,36 +722,6 @@ contract BaseV1Voter {
         }
     }
 
-    function distributeEx(address token) external {
-        distributeEx(token, 0, pools.length);
-    }
-
-    // setup distro > then distribute
-
-    function distributeEx(address token, uint start, uint finish) public lock {
-        require(token != base);
-        uint _balance = erc20(token).balanceOf(address(this));
-        if (_balance > 0 && totalWeight > 0) {
-            uint _totalWeight = totalWeight;
-            for (uint x = start; x < finish; x++) {
-              uint _reward = _balance * weights[pools[x]] / _totalWeight;
-              if (_reward > 0) {
-                  address _gauge = gauges[pools[x]];
-
-                  erc20(token).approve(_gauge, 0); // first set to 0, this helps reset some non-standard tokens
-                  erc20(token).approve(_gauge, _reward);
-                  IGauge(_gauge).notifyRewardAmount(token, _reward); // can return false, will simply not distribute tokens
-              }
-            }
-        }
-    }
-
-    function _safeTransfer(address token, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
-
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) =
             token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
