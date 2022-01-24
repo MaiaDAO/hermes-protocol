@@ -455,9 +455,11 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         supportedInterfaces[ERC721_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_METADATA_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_ENUMERABLE_INTERFACE_ID] = true;
-        tokenId = 0;
 
-        emit Transfer(address(0), msg.sender, 0);
+        // mint-ish
+        emit Transfer(address(0), address(this), tokenId);
+        // burn-ish
+        emit Transfer(address(this), address(0), tokenId);
     }
 
     /// @dev Interface identification is specified in ERC-165.
