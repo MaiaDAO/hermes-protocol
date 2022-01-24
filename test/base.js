@@ -492,11 +492,14 @@ describe("core", function () {
     const mim_1 = ethers.BigNumber.from("1000000000000000000");
     const route = [{from:mim.address, to:ust.address, stable:false},{from:ust.address, to:mim.address, stable:true}]
 
-    const before = await ust.balanceOf(owner.address);
+    const before = (await mim.balanceOf(owner.address)).sub(mim_1);
+
     const expected_output = await router.getAmountsOut(mim_1, route);
     console.log(expected_output);
     await mim.approve(router.address, mim_1);
     await router.swapExactTokensForTokens(mim_1, expected_output[2], route, owner.address, Date.now());
+    const after = await mim.balanceOf(owner.address);
+    expect(after.sub(before)).to.equal(expected_output[2])
   });
 
   it("distribute and claim fees", async function () {
