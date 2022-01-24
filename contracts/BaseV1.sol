@@ -124,7 +124,7 @@ contract BaseV1 {
     }
 
     function burn(address account, uint256 amount) external returns (bool) {
-        require(msg.sender == _getRouter() || account == msg.sender);
+        require(msg.sender == _getRouter());
         totalSupply -= amount;
         balanceOf[account] -= amount;
 

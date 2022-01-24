@@ -13,9 +13,6 @@ interface erc20 {
 }
 
 library Math {
-    function max(uint a, uint b) internal pure returns (uint) {
-        return a >= b ? a : b;
-    }
     function min(uint a, uint b) internal pure returns (uint) {
         return a < b ? a : b;
     }
@@ -31,94 +28,10 @@ library Math {
             z = 1;
         }
     }
-    function cbrt(uint256 n) internal pure returns (uint256) { unchecked {
-        uint256 x = 0;
-        for (uint256 y = 1 << 255; y > 0; y >>= 3) {
-            x <<= 1;
-            uint256 z = 3 * x * (x + 1) + 1;
-            if (n / y >= z) {
-                n -= y * z;
-                x += 1;
-            }
-        }
-        return x;
-    }}
 }
 
 interface IBaseV1Callee {
     function hook(address sender, uint amount0, uint amount1, bytes calldata data) external;
-}
-
-library UQ112x112 {
-    uint224 constant Q112 = 2**112;
-
-    // encode a uint112 as a UQ112x112
-    function encode(uint112 y) internal pure returns (uint224 z) {
-        z = uint224(y) * Q112; // never overflows
-    }
-
-    // divide a UQ112x112 by a uint112, returning a UQ112x112
-    function uqdiv(uint224 x, uint112 y) internal pure returns (uint224 z) {
-        z = x / uint224(y);
-    }
-}
-
-// a library for handling binary fixed point numbers (https://en.wikipedia.org/wiki/Q_(number_format))
-library FixedPoint {
-    // range: [0, 2**112 - 1]
-    // resolution: 1 / 2**112
-    struct uq112x112 {
-        uint224 _x;
-    }
-
-    // range: [0, 2**144 - 1]
-    // resolution: 1 / 2**112
-    struct uq144x112 {
-        uint _x;
-    }
-
-    uint8 private constant RESOLUTION = 112;
-
-    // encode a uint112 as a UQ112x112
-    function encode(uint112 x) internal pure returns (uq112x112 memory) {
-        return uq112x112(uint224(x) << RESOLUTION);
-    }
-
-    // encodes a uint144 as a UQ144x112
-    function encode144(uint144 x) internal pure returns (uq144x112 memory) {
-        return uq144x112(uint256(x) << RESOLUTION);
-    }
-
-    // divide a UQ112x112 by a uint112, returning a UQ112x112
-    function div(uq112x112 memory self, uint112 x) internal pure returns (uq112x112 memory) {
-        require(x != 0, 'FixedPoint: DIV_BY_ZERO');
-        return uq112x112(self._x / uint224(x));
-    }
-
-    // multiply a UQ112x112 by a uint, returning a UQ144x112
-    // reverts on overflow
-    function mul(uq112x112 memory self, uint y) internal pure returns (uq144x112 memory) {
-        uint z;
-        require(y == 0 || (z = uint(self._x) * y) / y == uint(self._x), "FixedPoint: MULTIPLICATION_OVERFLOW");
-        return uq144x112(z);
-    }
-
-    // returns a UQ112x112 which represents the ratio of the numerator to the denominator
-    // equivalent to encode(numerator).div(denominator)
-    function fraction(uint112 numerator, uint112 denominator) internal pure returns (uq112x112 memory) {
-        require(denominator > 0, "FixedPoint: DIV_BY_ZERO");
-        return uq112x112((uint224(numerator) << RESOLUTION) / denominator);
-    }
-
-    // decode a UQ112x112 into a uint112 by truncating after the radix point
-    function decode(uq112x112 memory self) internal pure returns (uint112) {
-        return uint112(self._x >> RESOLUTION);
-    }
-
-    // decode a UQ144x112 into a uint144 by truncating after the radix point
-    function decode144(uq144x112 memory self) internal pure returns (uint144) {
-        return uint144(self._x >> RESOLUTION);
-    }
 }
 
 // Base V1 Fees contract is used as a 1:1 pair relationship to split out fees, this ensures that the curve does not need to be modified for LP shares
@@ -151,8 +64,6 @@ contract BaseV1Fees {
 
 // The base pair of pools, either stable or volatile
 contract BaseV1Pair {
-    using FixedPoint for *;
-    using UQ112x112 for uint224;
 
     string public name;
     string public symbol;
@@ -182,7 +93,7 @@ contract BaseV1Pair {
 
     // Structure to capture time period obervations every 30 minutes, used for local oracles
     struct Observation {
-        uint32 timestamp;
+        uint timestamp;
         uint price0Cumulative;
         uint price1Cumulative;
     }
@@ -195,9 +106,9 @@ contract BaseV1Pair {
     uint immutable decimals0;
     uint immutable decimals1;
 
-    uint112 public reserve0;
-    uint112 public reserve1;
-    uint32 public blockTimestampLast;
+    uint public reserve0;
+    uint public reserve1;
+    uint public blockTimestampLast;
 
     // reserve0Last and reserve1Last is added to allow for liquidity checks to ensure no liquidity manipulation via flash loan
     uint public reserve0Last;
@@ -229,7 +140,7 @@ contract BaseV1Pair {
         uint amount1Out,
         address indexed to
     );
-    event Sync(uint112 reserve0, uint112 reserve1);
+    event Sync(uint reserve0, uint reserve1);
 
     constructor() {
         uint chainId = block.chainid;
@@ -257,7 +168,7 @@ contract BaseV1Pair {
         decimals0 = 10**erc20(_token0).decimals();
         decimals1 = 10**erc20(_token1).decimals();
 
-        observations.push(Observation(uint32(block.timestamp % 2**32), 0, 0));
+        observations.push(Observation(block.timestamp, 0, 0));
     }
 
     // simple re-entrancy check
@@ -277,7 +188,7 @@ contract BaseV1Pair {
         return observations[observations.length-1];
     }
 
-    function metadata() external view returns (uint dec0, uint dec1, uint112 r0, uint112 r1, bool st, address t0, address t1) {
+    function metadata() external view returns (uint dec0, uint dec1, uint r0, uint r1, bool st, address t0, address t1) {
         return (decimals0, decimals1, reserve0, reserve1, stable, token0, token1);
     }
 
@@ -349,20 +260,19 @@ contract BaseV1Pair {
         }
     }
 
-    function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
+    function getReserves() public view returns (uint _reserve0, uint _reserve1, uint _blockTimestampLast) {
         _reserve0 = reserve0;
         _reserve1 = reserve1;
         _blockTimestampLast = blockTimestampLast;
     }
 
     // update reserves and, on the first call per block, price accumulators
-    function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
-        require(balance0 <= type(uint112).max && balance1 <= type(uint112).max, 'BaseV1: OVERFLOW');
-        uint32 blockTimestamp = uint32(block.timestamp % 2**32);
-        uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+    function _update(uint balance0, uint balance1, uint _reserve0, uint _reserve1) internal {
+        uint blockTimestamp = block.timestamp;
+        uint timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            price0CumulativeLast += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
-            price1CumulativeLast += uint(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
+            price0CumulativeLast += _reserve1 * timeElapsed / _reserve0 ;
+            price1CumulativeLast += _reserve0 * timeElapsed / _reserve1 ;
             reserve0Last = _reserve0; // save last reserve, allows external liquidity checks to ensure reserves weren't manipulated by flash loans
             reserve1Last = _reserve1;
         }
@@ -372,15 +282,10 @@ contract BaseV1Pair {
         if (timeElapsed > periodSize) {
             observations.push(Observation(blockTimestamp, price0CumulativeLast, price1CumulativeLast));
         }
-        reserve0 = uint112(balance0);
-        reserve1 = uint112(balance1);
+        reserve0 = balance0;
+        reserve1 = balance1;
         blockTimestampLast = blockTimestamp;
-        emit Sync(uint112(reserve0), uint112(reserve1));
-    }
-
-    // returns current timestamp
-    function currentBlockTimestamp() public view returns (uint32) {
-        return uint32(block.timestamp % 2 ** 32);
+        emit Sync(reserve0, reserve1);
     }
 
     // calculate the price, used for twap oracles, not used for spot price
@@ -389,28 +294,25 @@ contract BaseV1Pair {
         uint timeElapsed, uint amountIn
     ) public pure returns (uint amountOut) {
         // overflow is desired.
-        FixedPoint.uq112x112 memory priceAverage = FixedPoint.uq112x112(
-            uint224((priceCumulativeEnd - priceCumulativeStart) / timeElapsed)
-        );
-        amountOut = priceAverage.mul(amountIn).decode144();
+        amountOut = amountIn * (priceCumulativeEnd - priceCumulativeStart) / timeElapsed;
     }
 
     // produces the cumulative price using counterfactuals to save gas and avoid a call to sync.
-    function currentCumulativePrices() public view returns (uint price0Cumulative, uint price1Cumulative, uint32 blockTimestamp) {
-        blockTimestamp = currentBlockTimestamp();
+    function currentCumulativePrices() public view returns (uint price0Cumulative, uint price1Cumulative, uint blockTimestamp) {
+        blockTimestamp = block.timestamp;
         price0Cumulative = price0CumulativeLast;
         price1Cumulative = price1CumulativeLast;
 
         // if time has elapsed since the last update on the pair, mock the accumulated price values
-        (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) = getReserves();
+        (uint _reserve0, uint _reserve1, uint _blockTimestampLast) = getReserves();
         if (_blockTimestampLast != blockTimestamp) {
             // subtraction overflow is desired
-            uint32 timeElapsed = blockTimestamp - _blockTimestampLast;
+            uint timeElapsed = blockTimestamp - _blockTimestampLast;
             // addition overflow is desired
             // counterfactual
-            price0Cumulative += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
+            price0Cumulative += _reserve1 * timeElapsed / _reserve0;
             // counterfactual
-            price1Cumulative += uint(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
+            price1Cumulative += _reserve0 * timeElapsed / _reserve1 ;
         }
     }
 
@@ -497,7 +399,7 @@ contract BaseV1Pair {
     // this low-level function should be called from a contract which performs important safety checks
     // standard uniswap v2 implementation
     function mint(address to) external lock returns (uint liquidity) {
-        (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
         uint _balance0 = erc20(token0).balanceOf(address(this));
         uint _balance1 = erc20(token1).balanceOf(address(this));
         uint _amount0 = _balance0 - _reserve0;
@@ -520,7 +422,7 @@ contract BaseV1Pair {
     // this low-level function should be called from a contract which performs important safety checks
     // standard uniswap v2 implementation
     function burn(address to) external lock returns (uint amount0, uint amount1) {
-        (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
         address _token1 = token1;                                // gas savings
         uint _balance0 = erc20(_token0).balanceOf(address(this));
@@ -544,7 +446,7 @@ contract BaseV1Pair {
     // this low-level function should be called from a contract which performs important safety checks
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock {
         require(amount0Out > 0 || amount1Out > 0, 'IOA'); // BaseV1: INSUFFICIENT_OUTPUT_AMOUNT
-        (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'BaseV1: INSUFFICIENT_LIQUIDITY');
 
         uint _balance0;
