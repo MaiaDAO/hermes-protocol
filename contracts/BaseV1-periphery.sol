@@ -60,9 +60,9 @@ interface IWFTM {
 contract BaseV1Router01 {
 
     struct route {
-      address from;
-      address to;
-      bool stable;
+        address from;
+        address to;
+        bool stable;
     }
 
     address public immutable factory;

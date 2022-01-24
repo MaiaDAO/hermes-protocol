@@ -488,9 +488,9 @@ contract Gauge {
     }
 
     function left(address token) external view returns (uint) {
-      if (block.timestamp >= periodFinish[token]) return 0;
-      uint _remaining = periodFinish[token] - block.timestamp;
-      return _remaining * rewardRate[token];
+        if (block.timestamp >= periodFinish[token]) return 0;
+        uint _remaining = periodFinish[token] - block.timestamp;
+        return _remaining * rewardRate[token];
     }
 
     function notifyRewardAmount(address token, uint amount) external lock {

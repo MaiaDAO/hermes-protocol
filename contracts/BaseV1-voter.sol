@@ -700,7 +700,6 @@ contract BaseV1Voter {
             erc20(base).approve(_gauge, _claimable);
             IGauge(_gauge).notifyRewardAmount(base, _claimable);
         }
-
     }
 
     function distro() external {
@@ -730,6 +729,7 @@ contract BaseV1Voter {
     // setup distro > then distribute
 
     function distributeEx(address token, uint start, uint finish) public lock {
+        require(token != base);
         uint _balance = erc20(token).balanceOf(address(this));
         if (_balance > 0 && totalWeight > 0) {
             uint _totalWeight = totalWeight;
