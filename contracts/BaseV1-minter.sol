@@ -25,7 +25,7 @@ interface underlying {
     function transfer(address, uint) external returns (bool);
 }
 
-interface gauge_proxy {
+interface voter {
     function notifyRewardAmount(uint amount) external;
 }
 
@@ -43,7 +43,7 @@ contract BaseV1Minter {
     uint constant target_base = 100; // 2% per week target emission
     uint constant tail_base = 1000; // 0.2% per week target emission
     underlying public immutable _token;
-    gauge_proxy public immutable _gauge_proxy;
+    voter public immutable _voter;
     ve public immutable _ve;
     ve_dist public immutable _ve_dist;
     uint public weekly = 20000000e18;
@@ -53,13 +53,13 @@ contract BaseV1Minter {
     address initializer;
 
     constructor(
-        address __gauge_proxy, // the voting & distribution system
+        address __voter, // the voting & distribution system
         address  __ve, // the ve(3,3) system that will be locked into
         address __ve_dist // the distribution system that ensures users aren't diluted
     ) {
         initializer = msg.sender;
         _token = underlying(ve(__ve).token());
-        _gauge_proxy = gauge_proxy(__gauge_proxy);
+        _voter = voter(__voter);
         _ve = ve(__ve);
         _ve_dist = ve_dist(__ve_dist);
     }
@@ -123,8 +123,8 @@ contract BaseV1Minter {
             _ve_dist.checkpoint_token(); // checkpoint token balance that was just minted in ve_dist
             _ve_dist.checkpoint_total_supply(); // checkpoint supply
 
-            _token.approve(address(_gauge_proxy), weekly);
-            _gauge_proxy.notifyRewardAmount(weekly);
+            _token.approve(address(_voter), weekly);
+            _voter.notifyRewardAmount(weekly);
         }
         return _period;
     }

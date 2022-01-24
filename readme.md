@@ -148,29 +148,12 @@ function distribute(address token) external
 | wFTM| [0x27Ce41c3cb9AdB5Edb2d8bE253A1c6A64Db8c96d](https://testnet.ftmscan.com/address/0x27Ce41c3cb9AdB5Edb2d8bE253A1c6A64Db8c96d#code) |
 | USDT| [0x8ad96050318043166114884b59E2fc82210273b3](https://testnet.ftmscan.com/address/0x8ad96050318043166114884b59E2fc82210273b3#code) |
 | MIM | [0x976e33B07565b0c05B08b2e13AfFD3113e3D178d](https://testnet.ftmscan.com/address/0x976e33B07565b0c05B08b2e13AfFD3113e3D178d#code) |
-| BaseV1Factory | [0x5Ea8dfc4D2e033C509DbFE04Ec06C528Dc8390E6](https://testnet.ftmscan.com/address/0x5Ea8dfc4D2e033C509DbFE04Ec06C528Dc8390E6#code) |
-| BaseV1Router01 | [0xb4c16C699F77cA5286998B47C658D0AEdC857dA3](https://testnet.ftmscan.com/address/0xb4c16C699F77cA5286998B47C658D0AEdC857dA3#code) |
+| BaseV1Factory | [0xA88240A26E9E647fC1b33e0264Ad88D6da0b9c37](https://testnet.ftmscan.com/address/0xA88240A26E9E647fC1b33e0264Ad88D6da0b9c37#code) |
+| BaseV1GaugesFactory | [0x0C57b2c0a90C779C27D1194c4827F66eA73250F2](https://testnet.ftmscan.com/address/0x0C57b2c0a90C779C27D1194c4827F66eA73250F2#code) ||
+| BaseV1Voter | [0x39aCbDCa37b5c098F9D70B2ce3c731a83B8A97cF](https://testnet.ftmscan.com/address/0x39aCbDCa37b5c098F9D70B2ce3c731a83B8A97cF#code) |
+| BaseV1Router01 | [0x881CFeCF879C04de1D6824da5ba894eFade32340](https://testnet.ftmscan.com/address/0x881CFeCF879C04de1D6824da5ba894eFade32340#code) |
 | BaseV1 | [0x0673e1CF8EE91095232CFC98Ee1EbCeF42A1977E](https://testnet.ftmscan.com/address/0x0673e1CF8EE91095232CFC98Ee1EbCeF42A1977E#code) |
 | tokenizer | [0x3092326DB3220b5102A2999e8A5e80cd7503E1b5](https://testnet.ftmscan.com/address/0x3092326DB3220b5102A2999e8A5e80cd7503E1b5#code) |
-| ve3 | [0x81068A3eD5535c78884c7Ca566985c99069E5f81](https://testnet.ftmscan.com/address/0x81068A3eD5535c78884c7Ca566985c99069E5f81#code) |
-| ve3-dist | [0xc5da94535278c6410d8864009D67807cD26FE88A](https://testnet.ftmscan.com/address/0xc5da94535278c6410d8864009D67807cD26FE88A#code) |
-| BaseV1GaugesFactory | [0xa7f86ceac917fBcd6005eDB7FE5047C75Ac0aC42](https://testnet.ftmscan.com/address/0xa7f86ceac917fBcd6005eDB7FE5047C75Ac0aC42#code) ||
-| BaseV1GaugesVoter | [0x8C29427Bfa0f46Ab11066Df10D74cAEB363b4904](https://testnet.ftmscan.com/address/0x8C29427Bfa0f46Ab11066Df10D74cAEB363b4904#code) |
-| BaseV1Minter | [0xAE27B2DdBFd2D3b25898f769499CCd9c8DBc712b](https://testnet.ftmscan.com/address/0xAE27B2DdBFd2D3b25898f769499CCd9c8DBc712b#code) |
-
-### Previous Testnet deployment
-
-| Name | Address |
-| :--- | :--- |
-| wFTM| [0x27Ce41c3cb9AdB5Edb2d8bE253A1c6A64Db8c96d](https://testnet.ftmscan.com/address/0x27Ce41c3cb9AdB5Edb2d8bE253A1c6A64Db8c96d#code) |
-| USDT| [0x8ad96050318043166114884b59E2fc82210273b3](https://testnet.ftmscan.com/address/0x8ad96050318043166114884b59E2fc82210273b3#code) |
-| MIM | [0x976e33B07565b0c05B08b2e13AfFD3113e3D178d](https://testnet.ftmscan.com/address/0x976e33B07565b0c05B08b2e13AfFD3113e3D178d#code) |
-| BaseV1Factory | [0xace5dB14f89D49Aa612bD62caf98f71A5916f9E4](https://testnet.ftmscan.com/address/0xace5dB14f89D49Aa612bD62caf98f71A5916f9E4#code) |
-| BaseV1Router01 | [0x55974E7Ed4A95728d24aF056aEA2847F3E79c5f5](https://testnet.ftmscan.com/address/0x55974E7Ed4A95728d24aF056aEA2847F3E79c5f5#code) |
-| BaseV1 | [0xc30EB4dD0187AaD1428b998B251aa7d124783905](https://testnet.ftmscan.com/address/0xc30EB4dD0187AaD1428b998B251aa7d124783905#code) |
-| tokenizer | [0x3092326DB3220b5102A2999e8A5e80cd7503E1b5](https://testnet.ftmscan.com/address/0x3092326DB3220b5102A2999e8A5e80cd7503E1b5#code) |
-| ve3 | [0xeEe7131B79DF27C7dD61DFaEc66474C3A949cDe5](https://testnet.ftmscan.com/address/0xeEe7131B79DF27C7dD61DFaEc66474C3A949cDe5#code) |
-| ve3-dist | [0x6d8A9761DCD425912cfb3285AEF2Bde4eb8B416c](https://testnet.ftmscan.com/address/0x6d8A9761DCD425912cfb3285AEF2Bde4eb8B416c#code) |
-| BaseV1GaugesFactory | [0x1d601AccbACB22CFA76831eb0ea68A27A39386CC](https://testnet.ftmscan.com/address/0x1d601AccbACB22CFA76831eb0ea68A27A39386CC#code) ||
-| BaseV1GaugesVoter | [0xe6E56E917A628232B3cbd78A66e0FC78d480CA12](https://testnet.ftmscan.com/address/0xe6E56E917A628232B3cbd78A66e0FC78d480CA12#code) |
-| BaseV1Minter | [0x7d252ecB5f77D8a5bb8010Cb9C22725B8a99d4B1](https://testnet.ftmscan.com/address/0x7d252ecB5f77D8a5bb8010Cb9C22725B8a99d4B1#code) |
+| ve3 | [0x7866D43b6616B62A922691C40b69C6F9BcE5a7de](https://testnet.ftmscan.com/address/0x7866D43b6616B62A922691C40b69C6F9BcE5a7de#code) |
+| ve3-dist | [0xaFC42D4f940E50a5997b708c3Dd4eA1d6e6816D6](https://testnet.ftmscan.com/address/0xaFC42D4f940E50a5997b708c3Dd4eA1d6e6816D6#code) |
+| BaseV1Minter | [0x062Df86DccE23b3d304401128bF55E1cab358d59](https://testnet.ftmscan.com/address/0x062Df86DccE23b3d304401128bF55E1cab358d59#code) |

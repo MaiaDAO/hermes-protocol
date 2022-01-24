@@ -689,7 +689,6 @@ contract BaseV1Voter {
         }
     }
 
-
     function distribute(address _gauge) public lock {
         _updateFor(_gauge);
         uint _claimable = claimable[_gauge];
