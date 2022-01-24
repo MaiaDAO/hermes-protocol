@@ -88,11 +88,6 @@ describe("initial distro", function () {
     await network.provider.send("evm_increaseTime", [86400 * 7])
     await network.provider.send("evm_mine")
     await minter.update_period();
-    expect(await minter.weekly()).to.equal(ethers.BigNumber.from("18956209221376112295750792"));
-    await network.provider.send("evm_increaseTime", [86400 * 7])
-    await network.provider.send("evm_mine")
-    await minter.update_period();
-    expect(await minter.weekly()).to.equal(ethers.BigNumber.from("17981356997556718884546962"));
     await network.provider.send("evm_increaseTime", [86400 * 7])
     await network.provider.send("evm_mine")
     await minter.update_period();
@@ -105,7 +100,9 @@ describe("initial distro", function () {
     await network.provider.send("evm_increaseTime", [86400 * 7])
     await network.provider.send("evm_mine")
     await minter.update_period();
-    expect(await minter.weekly()).to.equal(ethers.BigNumber.from("15682399102700441777111680"));
+    await network.provider.send("evm_increaseTime", [86400 * 7])
+    await network.provider.send("evm_mine")
+    await minter.update_period();
   });
 
 });
