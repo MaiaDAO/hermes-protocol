@@ -44,6 +44,10 @@ contract StakingRewards {
         rewardsToken = IERC20(_rewardsToken);
     }
 
+    function totalSupply() external view returns (uint) {
+        return _totalSupply;
+    }
+
     function rewardPerToken() public view returns (uint) {
         if (_totalSupply == 0) {
             return rewardPerTokenStored;
