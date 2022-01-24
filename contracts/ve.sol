@@ -993,10 +993,11 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         _deposit_for(msg.sender, _tokenId, _value, 0, _locked, DepositType.DEPOSIT_FOR_TYPE, false);
     }
 
-    /// @notice Deposit `_value` tokens for `msg.sender` and lock for `_lock_duration`
+    /// @notice Deposit `_value` tokens for `_to` and lock for `_lock_duration`
     /// @param _value Amount to deposit
-    /// _lock_duration Number of seconds to lock tokens for (rounded down to nearest week)
-    function create_lock(uint256 _value, uint256 _lock_duration) external nonreentrant returns (uint256) {
+    /// @param _lock_duration Number of seconds to lock tokens for (rounded down to nearest week)
+    /// @param _to Address to deposit
+    function _create_lock(uint256 _value, uint256 _lock_duration, address _to) internal returns (uint256) {
         uint256 unlock_time = (block.timestamp + _lock_duration) / WEEK * WEEK; // Locktime is rounded down to weeks
 
         assert(_value > 0); // dev: need non-zero value
@@ -1005,10 +1006,25 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
         ++tokenId;
         uint256 _tokenId = tokenId;
-        _mint(msg.sender, _tokenId);
+        _mint(_to, _tokenId);
 
-        _deposit_for(msg.sender, _tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE, false);
+        _deposit_for(_to, _tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE, false);
         return _tokenId;
+    }
+
+    /// @notice Deposit `_value` tokens for `_to` and lock for `_lock_duration`
+    /// @param _value Amount to deposit
+    /// @param _lock_duration Number of seconds to lock tokens for (rounded down to nearest week)
+    /// @param _to Address to deposit
+    function create_lock_for(uint256 _value, uint256 _lock_duration, address _to) external nonreentrant returns (uint256) {
+        return _create_lock(_value, _lock_duration, _to);
+    }
+
+    /// @notice Deposit `_value` tokens for `msg.sender` and lock for `_lock_duration`
+    /// @param _value Amount to deposit
+    /// @param _lock_duration Number of seconds to lock tokens for (rounded down to nearest week)
+    function create_lock(uint256 _value, uint256 _lock_duration) external nonreentrant returns (uint256) {
+        return _create_lock(_value, _lock_duration, msg.sender);
     }
 
     /// @notice Deposit `_value` additional tokens for `_tokenId` without modifying the unlock time
