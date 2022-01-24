@@ -399,7 +399,7 @@ contract BaseV1Pair {
     // this low-level function should be called from a contract which performs important safety checks
     // standard uniswap v2 implementation
     function mint(address to) external lock returns (uint liquidity) {
-        (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
+        (uint _reserve0, uint _reserve1) = (reserve0, reserve1);
         uint _balance0 = erc20(token0).balanceOf(address(this));
         uint _balance1 = erc20(token1).balanceOf(address(this));
         uint _amount0 = _balance0 - _reserve0;
@@ -422,9 +422,8 @@ contract BaseV1Pair {
     // this low-level function should be called from a contract which performs important safety checks
     // standard uniswap v2 implementation
     function burn(address to) external lock returns (uint amount0, uint amount1) {
-        (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
-        address _token0 = token0;                                // gas savings
-        address _token1 = token1;                                // gas savings
+        (uint _reserve0, uint _reserve1) = (reserve0, reserve1);
+        (address _token0, address _token1) = (token0, token1);
         uint _balance0 = erc20(_token0).balanceOf(address(this));
         uint _balance1 = erc20(_token1).balanceOf(address(this));
         uint _liquidity = balanceOf[address(this)];
@@ -446,14 +445,13 @@ contract BaseV1Pair {
     // this low-level function should be called from a contract which performs important safety checks
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock {
         require(amount0Out > 0 || amount1Out > 0, 'IOA'); // BaseV1: INSUFFICIENT_OUTPUT_AMOUNT
-        (uint _reserve0, uint _reserve1,) = getReserves(); // gas savings
+        (uint _reserve0, uint _reserve1) =  (reserve0, reserve1);
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'BaseV1: INSUFFICIENT_LIQUIDITY');
 
         uint _balance0;
         uint _balance1;
         { // scope for _token{0,1}, avoids stack too deep errors
-        address _token0 = token0;
-        address _token1 = token1;
+        (address _token0, address _token1) = (token0, token1);
         require(to != _token0 && to != _token1, 'IT'); // BaseV1: INVALID_TO
         if (amount0Out > 0) _safeTransfer(_token0, to, amount0Out); // optimistically transfer tokens
         if (amount1Out > 0) _safeTransfer(_token1, to, amount1Out); // optimistically transfer tokens
@@ -465,8 +463,7 @@ contract BaseV1Pair {
         uint amount1In = _balance1 > _reserve1 - amount1Out ? _balance1 - (_reserve1 - amount1Out) : 0;
         require(amount0In > 0 || amount1In > 0, 'IIA'); // BaseV1: INSUFFICIENT_INPUT_AMOUNT
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-        address _token0 = token0;
-        address _token1 = token1;
+        (address _token0, address _token1) = (token0, token1);
         if (amount0In > 0) _update0(amount0In / 10000); // accrue fees for token0 and move them out of pool
         if (amount1In > 0) _update1(amount1In / 10000); // accrue fees for token1 and move them out of pool
         _balance0 = erc20(_token0).balanceOf(address(this)); // since we removed tokens, we need to reconfirm balances, can also simply use previous balance - amountIn/ 10000, but doing balanceOf again as safety check
@@ -481,8 +478,7 @@ contract BaseV1Pair {
 
     // force balances to match reserves
     function skim(address to) external lock {
-        address _token0 = token0; // gas savings
-        address _token1 = token1; // gas savings
+        (address _token0, address _token1) = (token0, token1);
         _safeTransfer(_token0, to, erc20(_token0).balanceOf(address(this)) - (reserve0));
         _safeTransfer(_token1, to, erc20(_token1).balanceOf(address(this)) - (reserve1));
     }
