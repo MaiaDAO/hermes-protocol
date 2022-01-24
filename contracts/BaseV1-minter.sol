@@ -68,7 +68,7 @@ contract BaseV1Minter {
     function initialize(
         address[] memory claimants,
         uint[] memory amounts,
-        uint max
+        uint max // sum amounts / max = % ownership of top protocols, so if initial 20m is distributed, and target is 25% protocol ownership, then max - 4 x 20m = 80m
     ) external {
         require(initializer == msg.sender);
         _token.mint(address(this), max);
