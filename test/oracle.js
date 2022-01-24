@@ -187,7 +187,6 @@ describe("oracles", function () {
     console.log(await pair.current(ust.address, ust_1000));
     console.log(await pair.current(mim.address, mim_1000));
     console.log(await pair.quote(mim.address, mim_1000, 1));
-    console.log(await pair.quoteCompare(mim.address, mim_1000, 1));
   });
 
 });

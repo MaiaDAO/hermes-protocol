@@ -385,8 +385,8 @@ contract BaseV1Pair {
         amount1 = _liquidity * _balance1 / _totalSupply; // using balances ensures pro-rata distribution
         require(amount0 > 0 && amount1 > 0, 'ILB'); // BaseV1: INSUFFICIENT_LIQUIDITY_BURNED
         _burn(address(this), _liquidity);
-        _safeTransfer(_token0, to, amount0);
-        _safeTransfer(_token1, to, amount1);
+        if (amount0 > 0) _safeTransfer(_token0, to, amount0);
+        if (amount1 > 0) _safeTransfer(_token1, to, amount1);
         _balance0 = erc20(_token0).balanceOf(address(this));
         _balance1 = erc20(_token1).balanceOf(address(this));
 
@@ -398,7 +398,7 @@ contract BaseV1Pair {
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock {
         require(amount0Out > 0 || amount1Out > 0, 'IOA'); // BaseV1: INSUFFICIENT_OUTPUT_AMOUNT
         (uint _reserve0, uint _reserve1) =  (reserve0, reserve1);
-        require(amount0Out < _reserve0 && amount1Out < _reserve1, 'BaseV1: INSUFFICIENT_LIQUIDITY');
+        require(amount0Out < _reserve0 && amount1Out < _reserve1, 'IL'); // BaseV1: INSUFFICIENT_LIQUIDITY
 
         uint _balance0;
         uint _balance1;
@@ -608,9 +608,7 @@ contract BaseV1Factory {
         require(token0 != address(0), 'ZA'); // BaseV1: ZERO_ADDRESS
         require(getPair[token0][token1][stable] == address(0), 'PE'); // BaseV1: PAIR_EXISTS - single check is sufficient
         bytes32 salt = keccak256(abi.encodePacked(token0, token1, stable)); // notice salt includes stable as well, 3 parameters
-        _temp0 = token0;
-        _temp1 = token1;
-        _temp = stable;
+        (_temp0, _temp1, _temp) = (token0, token1, stable);
         pair = address(new BaseV1Pair{salt:salt}());
         getPair[token0][token1][stable] = pair;
         getPair[token1][token0][stable] = pair; // populate mapping in the reverse direction
