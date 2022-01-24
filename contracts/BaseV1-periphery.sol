@@ -122,7 +122,7 @@ contract BaseV1Router01 {
         amounts = new uint[](routes.length+1);
         amounts[0] = amountIn;
         for (uint i = 0; i < routes.length; i++) {
-            amounts[i+1] = IBaseV1Pair(pairFor(routes[i].from, routes[i].to, routes[i].stable)).getAmountOut(amountIn, routes[i].from);
+            amounts[i+1] = IBaseV1Pair(pairFor(routes[i].from, routes[i].to, routes[i].stable)).getAmountOut(amounts[i], routes[i].from);
         }
     }
 

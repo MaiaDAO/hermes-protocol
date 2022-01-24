@@ -483,11 +483,20 @@ describe("core", function () {
     const route = {from:mim.address, to:ust.address, stable:false}
 
     const before = await ust.balanceOf(owner.address);
-    const expected_output_pair = await pair2.getAmountOut(mim_1, mim.address);
     const expected_output = await router.getAmountsOut(mim_1, [route]);
     await mim.approve(router.address, mim_1);
     await router.swapExactTokensForTokens(mim_1, expected_output[1], [route], owner.address, Date.now());
-    const fees = await pair2.fees()
+  });
+
+  it("BaseV1Router01 pair1>pair2 getAmountsOut & swapExactTokensForTokens", async function () {
+    const mim_1 = ethers.BigNumber.from("1000000000000000000");
+    const route = [{from:mim.address, to:ust.address, stable:false},{from:ust.address, to:mim.address, stable:true}]
+
+    const before = await ust.balanceOf(owner.address);
+    const expected_output = await router.getAmountsOut(mim_1, route);
+    console.log(expected_output);
+    await mim.approve(router.address, mim_1);
+    await router.swapExactTokensForTokens(mim_1, expected_output[2], route, owner.address, Date.now());
   });
 
   it("distribute and claim fees", async function () {
