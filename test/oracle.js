@@ -161,17 +161,33 @@ describe("oracles", function () {
     const expected_output = await router.getAmountsOut(ust_1, [route]);
     await ust.approve(router.address, ust_1);
     await router.swapExactTokensForTokens(ust_1, expected_output[1], [route], owner.address, Date.now());
+    await network.provider.send("evm_increaseTime", [1801])
+    await network.provider.send("evm_mine")
+    await ust.approve(router.address, ust_1);
+    await router.swapExactTokensForTokens(ust_1, 0, [route], owner.address, Date.now());
+    await network.provider.send("evm_increaseTime", [1801])
+    await network.provider.send("evm_mine")
+    await ust.approve(router.address, ust_1);
+    await router.swapExactTokensForTokens(ust_1, 0, [route], owner.address, Date.now());
+    await network.provider.send("evm_increaseTime", [1801])
+    await network.provider.send("evm_mine")
+    await ust.approve(router.address, ust_1);
+    await router.swapExactTokensForTokens(ust_1, 0, [route], owner.address, Date.now());
     const fees = await pair.fees()
-    expect(await ust.balanceOf(fees)).to.be.equal(100);
+    expect(await ust.balanceOf(fees)).to.be.equal(400);
     const b = await ust.balanceOf(owner.address);
     await pair.claimFees();
     expect(await ust.balanceOf(owner.address)).to.be.above(b);
   });
 
   it("oracle", async function () {
-    const pair_1000 = ethers.BigNumber.from("1000000000");
+    const ust_1000 = ethers.BigNumber.from("1000000000");
+    const mim_1000 = ethers.BigNumber.from("1000000000000000000000");
 
-    console.log(await pair.current(ust.address, pair_1000));
+    console.log(await pair.current(ust.address, ust_1000));
+    console.log(await pair.current(mim.address, mim_1000));
+    console.log(await pair.quote(mim.address, mim_1000, 1));
+    console.log(await pair.quoteCompare(mim.address, mim_1000, 1));
   });
 
 });

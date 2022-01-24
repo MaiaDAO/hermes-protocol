@@ -94,8 +94,8 @@ contract BaseV1Pair {
     // Structure to capture time period obervations every 30 minutes, used for local oracles
     struct Observation {
         uint timestamp;
-        uint price0Cumulative;
-        uint price1Cumulative;
+        uint reserve0Cumulative;
+        uint reserve1Cumulative;
     }
 
     // Capture oracle reading every 30 minutes
@@ -110,11 +110,8 @@ contract BaseV1Pair {
     uint public reserve1;
     uint public blockTimestampLast;
 
-    // reserve0Last and reserve1Last is added to allow for liquidity checks to ensure no liquidity manipulation via flash loan
-    uint public reserve0Last;
-    uint public reserve1Last;
-    uint public price0CumulativeLast;
-    uint public price1CumulativeLast;
+    uint public reserve0CumulativeLast;
+    uint public reserve1CumulativeLast;
 
     // index0 and index1 are used to accumulate fees, this is split out from normal trades to keep the swap "clean"
     // this further allows LP holders to easily claim fees for tokens they have/staked
@@ -271,16 +268,14 @@ contract BaseV1Pair {
         uint blockTimestamp = block.timestamp;
         uint timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            price0CumulativeLast += _reserve1 * timeElapsed / _reserve0 ;
-            price1CumulativeLast += _reserve0 * timeElapsed / _reserve1 ;
-            reserve0Last = _reserve0; // save last reserve, allows external liquidity checks to ensure reserves weren't manipulated by flash loans
-            reserve1Last = _reserve1;
+            reserve0CumulativeLast += _reserve0 * timeElapsed;
+            reserve1CumulativeLast += _reserve1 * timeElapsed;
         }
 
         Observation memory _point = lastObservation();
         timeElapsed = blockTimestamp - _point.timestamp; // compare the last observation with current timestamp, if greater than 30 minutes, record a new event
         if (timeElapsed > periodSize) {
-            observations.push(Observation(blockTimestamp, price0CumulativeLast, price1CumulativeLast));
+            observations.push(Observation(blockTimestamp, reserve0CumulativeLast, reserve1CumulativeLast));
         }
         reserve0 = balance0;
         reserve1 = balance1;
@@ -288,75 +283,43 @@ contract BaseV1Pair {
         emit Sync(reserve0, reserve1);
     }
 
-    // calculate the price, used for twap oracles, not used for spot price
-    function computeAmountOut(
-        uint priceCumulativeStart, uint priceCumulativeEnd,
-        uint timeElapsed, uint amountIn
-    ) public pure returns (uint amountOut) {
-        // overflow is desired.
-        amountOut = amountIn * (priceCumulativeEnd - priceCumulativeStart) / timeElapsed;
-    }
-
     // produces the cumulative price using counterfactuals to save gas and avoid a call to sync.
-    function currentCumulativePrices() public view returns (uint price0Cumulative, uint price1Cumulative, uint blockTimestamp) {
+    function currentCumulativePrices() public view returns (uint reserve0Cumulative, uint reserve1Cumulative, uint blockTimestamp) {
         blockTimestamp = block.timestamp;
-        price0Cumulative = price0CumulativeLast;
-        price1Cumulative = price1CumulativeLast;
+        reserve0Cumulative = reserve0CumulativeLast;
+        reserve1Cumulative = reserve1CumulativeLast;
 
         // if time has elapsed since the last update on the pair, mock the accumulated price values
         (uint _reserve0, uint _reserve1, uint _blockTimestampLast) = getReserves();
         if (_blockTimestampLast != blockTimestamp) {
             // subtraction overflow is desired
             uint timeElapsed = blockTimestamp - _blockTimestampLast;
-            // addition overflow is desired
-            // counterfactual
-            price0Cumulative += _reserve1 * timeElapsed / _reserve0;
-            // counterfactual
-            price1Cumulative += _reserve0 * timeElapsed / _reserve1 ;
+            reserve0Cumulative += _reserve0 * timeElapsed;
+            reserve1Cumulative += _reserve1 * timeElapsed;
         }
     }
 
     // gives the current twap price measured from amountIn * tokenIn gives amountOut
     function current(address tokenIn, uint amountIn) external view returns (uint amountOut) {
         Observation memory _observation = lastObservation();
-        (uint price0Cumulative, uint price1Cumulative,) = currentCumulativePrices();
+        (uint reserve0Cumulative, uint reserve1Cumulative,) = currentCumulativePrices();
         if (block.timestamp == _observation.timestamp) {
             _observation = observations[observations.length-2];
         }
 
         uint timeElapsed = block.timestamp - _observation.timestamp;
         timeElapsed = timeElapsed == 0 ? 1 : timeElapsed;
-        if (token0 == tokenIn) {
-            return computeAmountOut(_observation.price0Cumulative, price0Cumulative, timeElapsed, amountIn);
-        } else {
-            return computeAmountOut(_observation.price1Cumulative, price1Cumulative, timeElapsed, amountIn);
-        }
+        uint _reserve0 = (reserve0Cumulative - _observation.reserve0Cumulative) / timeElapsed;
+        uint _reserve1 = (reserve1Cumulative - _observation.reserve1Cumulative) / timeElapsed;
+        amountOut = _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
     }
 
     // as per `current`, however allows user configured granularity, up to the full window size
     function quote(address tokenIn, uint amountIn, uint granularity) external view returns (uint amountOut) {
-        uint priceAverageCumulative = 0;
-        uint length = observations.length-1;
-        uint i = length - granularity;
-
-
-        uint nextIndex = 0;
-        if (token0 == tokenIn) {
-            for (; i < length; i++) {
-                nextIndex = i+1;
-                priceAverageCumulative += computeAmountOut(
-                    observations[i].price0Cumulative,
-                    observations[nextIndex].price0Cumulative,
-                    observations[nextIndex].timestamp - observations[i].timestamp, amountIn);
-            }
-        } else {
-            for (; i < length; i++) {
-                nextIndex = i+1;
-                priceAverageCumulative += computeAmountOut(
-                    observations[i].price1Cumulative,
-                    observations[nextIndex].price1Cumulative,
-                    observations[nextIndex].timestamp - observations[i].timestamp, amountIn);
-            }
+        uint [] memory _prices = sample(tokenIn, amountIn, granularity, 1);
+        uint priceAverageCumulative;
+        for (uint i = 0; i < _prices.length; i++) {
+            priceAverageCumulative += _prices[i];
         }
         return priceAverageCumulative / granularity;
     }
@@ -374,24 +337,13 @@ contract BaseV1Pair {
         uint nextIndex = 0;
         uint index = 0;
 
-        if (token0 == tokenIn) {
-            for (; i < length; i+=window) {
-                nextIndex = i + window;
-                _prices[index] = computeAmountOut(
-                    observations[i].price0Cumulative,
-                    observations[nextIndex].price0Cumulative,
-                    observations[nextIndex].timestamp - observations[i].timestamp, amountIn);
-                index = index + 1;
-            }
-        } else {
-            for (; i < length; i+=window) {
-                nextIndex = i + window;
-                _prices[index] = computeAmountOut(
-                    observations[i].price1Cumulative,
-                    observations[nextIndex].price1Cumulative,
-                    observations[nextIndex].timestamp - observations[i].timestamp, amountIn);
-                index = index + 1;
-            }
+        for (; i < length; i+=window) {
+            nextIndex = i + window;
+            uint timeElapsed = observations[nextIndex].timestamp - observations[i].timestamp;
+            uint _reserve0 = (observations[nextIndex].reserve0Cumulative - observations[i].reserve0Cumulative) / timeElapsed;
+            uint _reserve1 = (observations[nextIndex].reserve1Cumulative - observations[i].reserve1Cumulative) / timeElapsed;
+            _prices[index] = _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
+            index = index + 1;
         }
         return _prices;
     }
@@ -514,8 +466,12 @@ contract BaseV1Pair {
     }
 
     function getAmountOut(uint amountIn, address tokenIn) external view returns (uint) {
-        (uint _reserve0, uint _reserve1,) = getReserves();
+        (uint _reserve0, uint _reserve1) = (reserve0, reserve1);
         amountIn -= amountIn / 10000; // remove fee from amount received
+        return _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
+    }
+
+    function _getAmountOut(uint amountIn, address tokenIn, uint _reserve0, uint _reserve1) internal view returns (uint) {
         if (stable) {
             uint xy =  _k(_reserve0, _reserve1);
             _reserve0 = _reserve0 * 1e18 / decimals0;
