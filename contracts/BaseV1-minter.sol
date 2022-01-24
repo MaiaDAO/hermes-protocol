@@ -22,7 +22,7 @@ interface underlying {
     function mint(address, uint) external;
     function totalSupply() external view returns (uint);
     function balanceOf(address) external view returns (uint);
-    function burn(address, uint) external;
+    function transfer(address, uint) external returns (bool);
 }
 
 interface gauge_proxy {
@@ -112,11 +112,17 @@ contract BaseV1Minter {
             active_period = _period;
             weekly = weekly_emission();
 
-            _token.mint(address(_ve_dist), calculate_growth(weekly)); // mint inflation for staked users based on their % balance
+            uint _growth = calculate_growth(weekly);
+            uint _required = _growth + weekly;
+            uint _balanceOf = _token.balanceOf(address(this));
+            if (_balanceOf < _required) {
+                _token.mint(address(this), _required-_balanceOf);
+            }
+
+            _token.transfer(address(_ve_dist), _growth);
             _ve_dist.checkpoint_token(); // checkpoint token balance that was just minted in ve_dist
             _ve_dist.checkpoint_total_supply(); // checkpoint supply
 
-            _token.mint(address(this), weekly); // mint weekly emission to gauge proxy (handles voting and distribution)
             _token.approve(address(_gauge_proxy), weekly);
             _gauge_proxy.notifyRewardAmount(weekly);
         }
