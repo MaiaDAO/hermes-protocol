@@ -281,16 +281,14 @@ contract Gauge {
     }
 
     function batchUserRewards(address token, address account, uint maxRuns) external {
-        rewardPerTokenStored[token] = _updateRewardPerToken(token);
-        lastUpdateTime[token] = lastTimeRewardApplicable(token);
+        (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
         (userRewards[token][account], lastEarn[token][account]) = _batchUserRewards(token, account, maxRuns);
     }
 
     function getReward(address account, address[] memory tokens) public lock {
         require(msg.sender == account || msg.sender == voter);
         for (uint i = 0; i < tokens.length; i++) {
-            rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
-            lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+            (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
 
             uint _reward = earned(tokens[i], account);
             userRewards[tokens[i]][account] = 0;
@@ -370,17 +368,15 @@ contract Gauge {
         uint _endIndex = Math.min(supplyNumCheckpoints-1, maxRuns);
         uint _rewardRate = rewardRate[token];
 
-        SupplyCheckpoint memory sp0;
-        SupplyCheckpoint memory sp1;
         for (uint i = _startIndex; i < _endIndex; i++) {
-            sp0 = supplyCheckpoints[i];
+            SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
             if (i == _startIndex) {
                 sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
             }
-            sp1 = supplyCheckpoints[i+1];
+            SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
             if (_rewardRate > 0 && sp0.supply > 0) {
-              reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
-              _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
+                reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
+                _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
             }
             _startTimestamp = sp1.timestamp;
         }
@@ -388,17 +384,20 @@ contract Gauge {
         return (reward, _startTimestamp);
     }
 
-    function _updateRewardPerToken(address token) internal returns (uint) {
+    function _calcRewardPerToken(address token, uint timestamp1, uint timestamp0, uint supply) internal view returns (uint) {
+        return ((Math.min(timestamp1, periodFinish[token]) - Math.min(timestamp0, periodFinish[token])) * rewardRate[token] * PRECISION / supply);
+    }
+
+    function _updateRewardPerToken(address token) internal returns (uint, uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
         if (supplyNumCheckpoints == 0) {
-            return reward;
+            return (reward, _startTimestamp);
         }
 
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = supplyNumCheckpoints-1;
-        uint _rewardRate = rewardRate[token];
 
         if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
@@ -407,9 +406,10 @@ contract Gauge {
                     sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
                 }
                 SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
-                if (_rewardRate > 0 && sp0.supply > 0) {
-                  reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
+                if (sp0.supply > 0) {
+                  reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
                   _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
+                  _startTimestamp = sp1.timestamp;
                 }
             }
         }
@@ -418,12 +418,13 @@ contract Gauge {
         if (_endIndex == _startIndex) {
             sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
         }
-        if (_rewardRate > 0 && sp.supply > 0) {
-            reward += ((lastTimeRewardApplicable(token) - Math.min(sp.timestamp, periodFinish[token])) * _rewardRate * PRECISION / sp.supply);
-            _writeRewardPerTokenCheckpoint(token, reward, lastTimeRewardApplicable(token));
+        if (sp.supply > 0) {
+            reward += _calcRewardPerToken(token, lastTimeRewardApplicable(token), sp.timestamp, sp.supply);
+            _writeRewardPerTokenCheckpoint(token, reward, block.timestamp);
+            _startTimestamp = block.timestamp;
         }
 
-        return reward;
+        return (reward, _startTimestamp);
     }
 
     // earned is an estimation, it won't be exact till the supply > rewardPerToken calculations have run
@@ -494,8 +495,7 @@ contract Gauge {
     }
 
     function notifyRewardAmount(address token, uint amount) external lock {
-        rewardPerTokenStored[token] = _updateRewardPerToken(token);
-        lastUpdateTime[token] = block.timestamp;
+        (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);

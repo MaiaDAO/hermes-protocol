@@ -269,8 +269,7 @@ contract Bribe {
     }
 
     function batchUserRewards(address token, uint tokenId, uint maxRuns) external {
-        rewardPerTokenStored[token] = _updateRewardPerToken(token);
-        lastUpdateTime[token] = lastTimeRewardApplicable(token);
+        (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
         (userRewards[token][tokenId], lastEarn[token][tokenId]) = _batchUserRewards(token, tokenId, maxRuns);
     }
 
@@ -278,8 +277,7 @@ contract Bribe {
     function getReward(uint tokenId, address[] memory tokens) public lock  {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
         for (uint i = 0; i < tokens.length; i++) {
-            rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
-            lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+            (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
 
             uint _reward = earned(tokens[i], tokenId);
             userRewards[tokens[i]][tokenId] = 0;
@@ -294,8 +292,7 @@ contract Bribe {
         require(msg.sender == factory);
         address _owner = ve(_ve).ownerOf(tokenId);
         for (uint i = 0; i < tokens.length; i++) {
-            rewardPerTokenStored[tokens[i]] = _updateRewardPerToken(tokens[i]);
-            lastUpdateTime[tokens[i]] = lastTimeRewardApplicable(tokens[i]);
+            (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
 
             uint _reward = earned(tokens[i], tokenId);
             userRewards[tokens[i]][tokenId] = 0;
@@ -322,12 +319,9 @@ contract Bribe {
         uint _endIndex = Math.min(numCheckpoints[tokenId]-1, maxRuns);
 
         uint reward = userRewards[token][tokenId];
-
-        Checkpoint memory cp0;
-        Checkpoint memory cp1;
         for (uint i = _startIndex; i < _endIndex; i++) {
-            cp0 = checkpoints[tokenId][i];
-            cp1 = checkpoints[tokenId][i+1];
+            Checkpoint memory cp0 = checkpoints[tokenId][i];
+            Checkpoint memory cp1 = checkpoints[tokenId][i+1];
             (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
             (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
             reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
@@ -351,19 +345,16 @@ contract Bribe {
 
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = Math.min(supplyNumCheckpoints-1, maxRuns);
-        uint _rewardRate = rewardRate[token];
 
-        SupplyCheckpoint memory sp0;
-        SupplyCheckpoint memory sp1;
         for (uint i = _startIndex; i < _endIndex; i++) {
-            sp0 = supplyCheckpoints[i];
+            SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
             if (i == _startIndex) {
                 sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
             }
-            sp1 = supplyCheckpoints[i+1];
-            if (_rewardRate > 0 && sp0.supply > 0) {
-              reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
-              _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
+            SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
+            if (sp0.supply > 0) {
+                reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
+                _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
             }
             _startTimestamp = sp1.timestamp;
         }
@@ -371,17 +362,20 @@ contract Bribe {
         return (reward, _startTimestamp);
     }
 
-    function _updateRewardPerToken(address token) internal returns (uint) {
+    function _calcRewardPerToken(address token, uint timestamp1, uint timestamp0, uint supply) internal view returns (uint) {
+        return ((Math.min(timestamp1, periodFinish[token]) - Math.min(timestamp0, periodFinish[token])) * rewardRate[token] * PRECISION / supply);
+    }
+
+    function _updateRewardPerToken(address token) internal returns (uint, uint) {
         uint _startTimestamp = lastUpdateTime[token];
         uint reward = rewardPerTokenStored[token];
 
         if (supplyNumCheckpoints == 0) {
-            return reward;
+            return (reward, _startTimestamp);
         }
 
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = supplyNumCheckpoints-1;
-        uint _rewardRate = rewardRate[token];
 
         if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
@@ -390,11 +384,11 @@ contract Bribe {
                     sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
                 }
                 SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
-                if (_rewardRate > 0 && sp0.supply > 0) {
-                  reward += ((sp1.timestamp - sp0.timestamp) * _rewardRate * PRECISION / sp0.supply);
+                if (sp0.supply > 0) {
+                  reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
                   _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
+                  _startTimestamp = sp1.timestamp;
                 }
-
             }
         }
 
@@ -402,12 +396,13 @@ contract Bribe {
         if (_endIndex == _startIndex) {
             sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
         }
-        if (_rewardRate > 0 && sp.supply > 0) {
-            reward += ((lastTimeRewardApplicable(token) - Math.min(sp.timestamp, periodFinish[token])) * _rewardRate * PRECISION / sp.supply);
-            _writeRewardPerTokenCheckpoint(token, reward, lastTimeRewardApplicable(token));
+        if (sp.supply > 0) {
+            reward += _calcRewardPerToken(token, lastTimeRewardApplicable(token), sp.timestamp, sp.supply);
+            _writeRewardPerTokenCheckpoint(token, reward, block.timestamp);
+            _startTimestamp = block.timestamp;
         }
 
-        return reward;
+        return (reward, _startTimestamp);
     }
 
     function earned(address token, uint tokenId) public view returns (uint) {
@@ -460,8 +455,7 @@ contract Bribe {
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     // TODO: rework to weekly resets, _updatePeriod as per v1 bribes
     function notifyRewardAmount(address token, uint amount) external lock {
-        rewardPerTokenStored[token] = _updateRewardPerToken(token);
-        lastUpdateTime[token] = block.timestamp;
+        (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);

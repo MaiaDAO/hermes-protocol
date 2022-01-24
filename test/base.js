@@ -639,13 +639,27 @@ describe("core", function () {
     const before = await ve_underlying.balanceOf(owner3.address)
     await gauge.batchUserRewards(ve_underlying.address, owner3.address, 200);
     await gauge.batchUserRewards(ve_underlying.address, owner3.address, 200);
+    await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner3.address));
     await gauge.batchUserRewards(ve_underlying.address, owner3.address, 200);
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    await pair.connect(owner3).approve(gauge.address, pair_1000);
+    await gauge.connect(owner3).deposit(pair_1000, 0);
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
     const earned = await gauge.earned(ve_underlying.address, owner3.address);
+    await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
+    await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner3.address));
+    await pair.connect(owner3).approve(gauge.address, pair_1000);
+    await gauge.connect(owner3).deposit(pair_1000, 0);
+    await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
+    await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner3.address));
+    await pair.connect(owner3).approve(gauge.address, pair_1000);
+    await gauge.connect(owner3).deposit(pair_1000, 0);
+    await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
+    await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
+    await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
     const after = await ve_underlying.balanceOf(owner3.address)
     const received = after.sub(before);
@@ -667,11 +681,13 @@ describe("core", function () {
     await staking.notifyRewardAmount(claimable);
     await gauge_factory.distro();
     expect(await gauge.rewardRate(ve_underlying.address)).to.be.equal(await staking.rewardRate());
+    console.log(await gauge.rewardPerTokenStored(ve_underlying.address))
   });
 
   it("gauge claim rewards owner3 next cycle", async function () {
     await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner3.address));
     const pair_1000 = ethers.BigNumber.from("1000000000");
+    console.log(await gauge.rewardPerTokenStored(ve_underlying.address))
     await pair.connect(owner3).approve(gauge.address, pair_1000);
     await gauge.connect(owner3).deposit(pair_1000, 0);
     const before = await ve_underlying.balanceOf(owner3.address)
@@ -680,6 +696,7 @@ describe("core", function () {
     const after = await ve_underlying.balanceOf(owner3.address)
     const received = after.sub(before);
     expect(received).to.be.above(0)
+    console.log(await gauge.rewardPerTokenStored(ve_underlying.address))
 
     await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner.address));
     await pair.connect(owner3).approve(gauge.address, pair_1000);
