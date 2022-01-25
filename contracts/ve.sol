@@ -393,8 +393,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     string constant public version = "1.0.0";
     uint256 constant public decimals = 18;
 
-    uint256 constant MIN_VE = 2500 * 1 ether;
-
     /// @dev Current count of token
     uint256 tokenId;
 
