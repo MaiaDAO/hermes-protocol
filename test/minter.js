@@ -93,7 +93,7 @@ describe("minter", function () {
     await network.provider.send("evm_mine")
     await minter.update_period();
     const claimable = await ve_dist.claimable(1);
-    expect(claimable).to.be.above(ethers.BigNumber.from("239039145118808654"));
+    expect(claimable).to.be.above(ethers.BigNumber.from("230039145118808654"));
     const before = await ve.balanceOfNFT(1);
     await ve_dist.claim(1);
     const after = await ve.balanceOfNFT(1);
