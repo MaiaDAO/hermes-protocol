@@ -47,7 +47,7 @@ describe("staking", function () {
     await stake.mint(owner2.address, ethers.BigNumber.from("1000000000000000000000000000"));
     await stake.mint(owner3.address, ethers.BigNumber.from("1000000000000000000000000000"));
 
-    vecontract = await ethers.getContractFactory("contracts/ve_test.sol:ve_test");
+    vecontract = await ethers.getContractFactory("contracts/test/ve_test.sol:ve_test");
     ve = await vecontract.deploy(ve_underlying.address);
   });
 
@@ -496,7 +496,7 @@ describe("staking", function () {
     const before = await reward2.balanceOf(owner.address);
     await gauge.getReward(owner.address, [reward2.address])
     const after = await reward2.balanceOf(owner.address);
-    
+
     expect(after.sub(before)).to.equal(expected1);
     expect(expected1).to.be.above(0);
   });
