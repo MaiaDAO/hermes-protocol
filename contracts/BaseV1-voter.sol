@@ -348,22 +348,21 @@ contract Bribe {
 
         for (uint i = _startIndex; i < _endIndex; i++) {
             SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
-            if (i == _startIndex) {
-                sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
-            }
-            SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
             if (sp0.supply > 0) {
-                reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
-                _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
+                SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
+                (uint _reward, uint endTime) = _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply, _startTimestamp);
+                reward += _reward;
+                _writeRewardPerTokenCheckpoint(token, reward, endTime);
+                _startTimestamp = endTime;
             }
-            _startTimestamp = sp1.timestamp;
         }
 
         return (reward, _startTimestamp);
     }
 
-    function _calcRewardPerToken(address token, uint timestamp1, uint timestamp0, uint supply) internal view returns (uint) {
-        return ((Math.min(timestamp1, periodFinish[token]) - Math.min(timestamp0, periodFinish[token])) * rewardRate[token] * PRECISION / supply);
+    function _calcRewardPerToken(address token, uint timestamp1, uint timestamp0, uint supply, uint startTimestamp) internal view returns (uint, uint) {
+        uint endTime = Math.max(timestamp1, startTimestamp);
+        return (((Math.min(endTime, periodFinish[token]) - Math.min(Math.max(timestamp0, startTimestamp), periodFinish[token])) * rewardRate[token] * PRECISION / supply), endTime);
     }
 
     function _updateRewardPerToken(address token) internal returns (uint, uint) {
@@ -380,24 +379,20 @@ contract Bribe {
         if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
                 SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
-                if (i == _startIndex) {
-                    sp0.timestamp = Math.max(sp0.timestamp, _startTimestamp);
-                }
-                SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
                 if (sp0.supply > 0) {
-                  reward += _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply);
-                  _writeRewardPerTokenCheckpoint(token, reward, sp1.timestamp);
-                  _startTimestamp = sp1.timestamp;
+                  SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
+                  (uint _reward, uint _endTime) = _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply, _startTimestamp);
+                  reward += _reward;
+                  _writeRewardPerTokenCheckpoint(token, reward, _endTime);
+                  _startTimestamp = _endTime;
                 }
             }
         }
 
         SupplyCheckpoint memory sp = supplyCheckpoints[_endIndex];
-        if (_endIndex == _startIndex) {
-            sp.timestamp = Math.max(sp.timestamp, _startTimestamp);
-        }
         if (sp.supply > 0) {
-            reward += _calcRewardPerToken(token, lastTimeRewardApplicable(token), sp.timestamp, sp.supply);
+            (uint _reward,) = _calcRewardPerToken(token, lastTimeRewardApplicable(token), Math.max(sp.timestamp, _startTimestamp), sp.supply, _startTimestamp);
+            reward += _reward;
             _writeRewardPerTokenCheckpoint(token, reward, block.timestamp);
             _startTimestamp = block.timestamp;
         }

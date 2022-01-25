@@ -366,8 +366,8 @@ contract Gauge {
 
         for (uint i = _startIndex; i < _endIndex; i++) {
             SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
-            SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
             if (sp0.supply > 0) {
+                SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
                 (uint _reward, uint _endTime) = _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply, _startTimestamp);
                 reward += _reward;
                 _writeRewardPerTokenCheckpoint(token, reward, _endTime);
@@ -379,8 +379,8 @@ contract Gauge {
     }
 
     function _calcRewardPerToken(address token, uint timestamp1, uint timestamp0, uint supply, uint startTimestamp) internal view returns (uint, uint) {
-        uint endTime = Math.min(Math.max(timestamp1, startTimestamp), periodFinish[token]);
-        return (((endTime - Math.min(Math.max(timestamp0, startTimestamp), periodFinish[token])) * rewardRate[token] * PRECISION / supply), endTime);
+        uint endTime = Math.max(timestamp1, startTimestamp);
+        return (((Math.min(endTime, periodFinish[token]) - Math.min(Math.max(timestamp0, startTimestamp), periodFinish[token])) * rewardRate[token] * PRECISION / supply), endTime);
     }
 
     function _updateRewardPerToken(address token) internal returns (uint, uint) {
