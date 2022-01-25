@@ -521,6 +521,8 @@ describe("core", function () {
     console.log(await ve_dist.timestamp());
     await minter.update_period();
     await gauge_factory.updateGauge(gauge.address);
+    console.log(await ve_underlying.balanceOf(ve_dist.address));
+    console.log(await ve_dist.claimable(1));
     const claimable = await gauge_factory.claimable(gauge.address);
     await ve_underlying.approve(staking.address, claimable);
     await staking.notifyRewardAmount(claimable);

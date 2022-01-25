@@ -60,7 +60,6 @@ contract ve_dist {
     );
 
     uint constant WEEK = 7 * 86400;
-    uint constant TOKEN_CHECKPOINT_DEADLINE = 86400;
 
     uint public start_time;
     uint public time_cursor;
@@ -111,7 +110,7 @@ contract ve_dist {
                 if (since_last == 0 && block.timestamp == t) {
                     tokens_per_week[this_week] += to_distribute;
                 } else {
-                    tokens_per_week[this_week] += to_distribute * (block.timestamp -t) / since_last;
+                    tokens_per_week[this_week] += to_distribute * (block.timestamp - t) / since_last;
                 }
                 break;
             } else {
