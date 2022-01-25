@@ -1,6 +1,6 @@
 
 
-![alt text](Solidly-Logo_Dark.png)
+![alt text](header.png)
 
 
 Solidly allows low cost, near 0 slippage trades on uncorrelated or tightly correlated assets. The protocol incentivizes fees instead of liquidity. Liquidity providers (LPs) are given incentives in the form of `token`, the amount received is calculated as follows;
