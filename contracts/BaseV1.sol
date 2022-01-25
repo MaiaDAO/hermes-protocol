@@ -29,22 +29,6 @@ contract BaseV1 {
         address _router
     ) {
         router = _router;
-        uint chainId;
-        assembly {
-            chainId := chainid()
-        }
-
-        // This is just a random ERC20 for testing, don't review
-
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
-                keccak256(bytes(name)),
-                keccak256(bytes('1')),
-                chainId,
-                address(this)
-            )
-        );
         _mint(msg.sender, 0);
     }
 
@@ -61,6 +45,15 @@ contract BaseV1 {
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
         require(deadline >= block.timestamp, 'StableV1: EXPIRED');
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+                keccak256(bytes(name)),
+                keccak256(bytes('1')),
+                block.chainid,
+                address(this)
+            )
+        );
         bytes32 digest = keccak256(
             abi.encodePacked(
                 '\x19\x01',
