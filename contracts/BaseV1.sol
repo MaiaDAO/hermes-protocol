@@ -5,7 +5,7 @@ contract BaseV1 {
 
     string public constant symbol = "BaseV1";
     string public constant name = "BaseV1";
-    uint256 public decimals = 18;
+    uint8 public decimals = 18;
     uint256 public totalSupply = 0;
 
     mapping(address => uint256) public balanceOf;
