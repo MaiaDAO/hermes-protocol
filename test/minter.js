@@ -17,7 +17,7 @@ function getCreate2Address(
   return getAddress(`0x${keccak256(sanitizedInputs).slice(-40)}`)
 }
 
-describe("initial distro", function () {
+describe("minter", function () {
 
   let token;
   let ve_underlying;
@@ -46,12 +46,13 @@ describe("initial distro", function () {
     const gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address);
     await gauge_factory.deployed();
     const VeDist = await ethers.getContractFactory("contracts/ve_dist.sol:ve_dist");
-    const ve_dist = await VeDist.deploy();
+    const ve_dist = await VeDist.deploy(ve.address, ethers.BigNumber.from(Date.now()).div(1000), ve_underlying.address, owner.address);
     await ve_dist.deployed();
 
     const BaseV1Minter = await ethers.getContractFactory("BaseV1Minter");
     minter = await BaseV1Minter.deploy(gauge_factory.address, ve.address, ve_dist.address);
     await minter.deployed();
+    await ve_dist.setDepositor(minter.address);
 
     const mim_1 = ethers.BigNumber.from("1000000000000000000");
     const ve_underlying_1 = ethers.BigNumber.from("1000000000000000000");

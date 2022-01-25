@@ -294,12 +294,13 @@ describe("core", function () {
 
   it("deploy BaseV1Minter", async function () {
     const VeDist = await ethers.getContractFactory("contracts/ve_dist.sol:ve_dist");
-    ve_dist = await VeDist.deploy();
+    ve_dist = await VeDist.deploy(ve.address, ethers.BigNumber.from(Date.now()).div(1000), ve_underlying.address, owner.address);
     await ve_dist.deployed();
 
     const BaseV1Minter = await ethers.getContractFactory("BaseV1Minter");
     minter = await BaseV1Minter.deploy(gauge_factory.address, ve.address, ve_dist.address);
     await minter.deployed();
+    await ve_dist.setDepositor(minter.address);
   });
 
   it("deploy BaseV1Factory gauge", async function () {
@@ -516,6 +517,8 @@ describe("core", function () {
   });
 
   it("minter mint", async function () {
+    console.log(await ve_dist.last_token_time());
+    console.log(await ve_dist.timestamp());
     await minter.update_period();
     await gauge_factory.updateGauge(gauge.address);
     const claimable = await gauge_factory.claimable(gauge.address);
