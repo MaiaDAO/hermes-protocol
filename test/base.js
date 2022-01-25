@@ -296,6 +296,8 @@ describe("core", function () {
     gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address);
     await gauge_factory.deployed();
 
+    await ve.setVoter(gauge_factory.address);
+
     expect(await gauge_factory.length()).to.equal(0);
   });
 
@@ -350,49 +352,6 @@ describe("core", function () {
     await gauge3.deposit(pair_1000, 0);
     expect(await gauge.totalSupply()).to.equal(pair_1000);
     expect(await gauge.earned(ve.address, owner.address)).to.equal(0);
-  });
-
-  it("fetch gauges with filters", async function () {
-    [voter] = await ethers.getSigners(1);
-    const gauges_factory_contract = await ethers.getContractFactory("BaseV1GaugeFactory");
-    const gauges_factory_instance = await gauges_factory_contract.deploy();
-    await gauges_factory_instance.deployed();
-
-    expect(await gauges_factory_instance.gaugesLength()).to.equal(0);
-    expect(await gauges_factory_instance.gaugesByPoolAddressLength(pair.address)).to.equal(0);
-    expect(await gauges_factory_instance.gaugesByBribeAddressLength(pair.address)).to.equal(0);
-    expect(await gauges_factory_instance.gaugesByVeAddressLength(pair.address)).to.equal(0);
-    expect(await gauges_factory_instance.gaugesByVoterAddressLength(pair.address)).to.equal(0);
-
-    await gauges_factory_instance.createGauge(pair.address, bribe.address, ve.address);
-    await gauges_factory_instance.createGauge(pair2.address, bribe.address, ve.address);
-    await gauges_factory_instance.createGauge(pair3.address, bribe.address, ve.address);
-
-    const gauge_1 = await gauges_factory_instance.gauges(0)
-    const gauge_2 = await gauges_factory_instance.gauges(1)
-    const gauge_3 = await gauges_factory_instance.gauges(2)
-
-    expect(await gauges_factory_instance.gaugesLength()).to.equal(3);
-    expect(await gauges_factory_instance.gaugesByPoolAddressLength(pair.address)).to.equal(1);
-    expect(await gauges_factory_instance.gaugesByBribeAddressLength(bribe.address)).to.equal(3);
-    expect(await gauges_factory_instance.gaugesByVeAddressLength(ve.address)).to.equal(3);
-    expect(await gauges_factory_instance.gaugesByVoterAddressLength(voter.address)).to.equal(3);
-
-    expect(await gauges_factory_instance.gaugesByPoolAddress(pair.address, 0)).to.equal(gauge_1);
-    expect(await gauges_factory_instance.gaugesByPoolAddress(pair2.address, 0)).to.equal(gauge_2);
-    expect(await gauges_factory_instance.gaugesByPoolAddress(pair3.address, 0)).to.equal(gauge_3);
-
-    expect(await gauges_factory_instance.gaugesByBribeAddress(bribe.address, 0)).to.equal(gauge_1);
-    expect(await gauges_factory_instance.gaugesByBribeAddress(bribe.address, 1)).to.equal(gauge_2);
-    expect(await gauges_factory_instance.gaugesByBribeAddress(bribe.address, 2)).to.equal(gauge_3);
-
-    expect(await gauges_factory_instance.gaugesByVeAddress(ve.address, 0)).to.equal(gauge_1);
-    expect(await gauges_factory_instance.gaugesByVeAddress(ve.address, 1)).to.equal(gauge_2);
-    expect(await gauges_factory_instance.gaugesByVeAddress(ve.address, 2)).to.equal(gauge_3);
-
-    expect(await gauges_factory_instance.gaugesByVoterAddress(voter.address, 0)).to.equal(gauge_1);
-    expect(await gauges_factory_instance.gaugesByVoterAddress(voter.address, 1)).to.equal(gauge_2);
-    expect(await gauges_factory_instance.gaugesByVoterAddress(voter.address, 2)).to.equal(gauge_3);
   });
 
   it("deploy BaseV1Factory gauge owner2", async function () {
@@ -583,6 +542,9 @@ describe("core", function () {
   });
 
   it("gauge claim rewards", async function () {
+    console.log(owner.address);
+    console.log(await ve.ownerOf(1));
+    console.log(await ve.isApprovedOrOwner(owner.address, 1));
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await staking.withdraw(await staking._balances(owner.address));
     const pair_1000 = ethers.BigNumber.from("1000000000");
@@ -626,7 +588,7 @@ describe("core", function () {
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await gauge.withdraw(await gauge.balanceOf(owner.address));
     await pair.approve(gauge.address, pair_1000);
-    await gauge.deposit(pair_1000, owner.address);
+    await gauge.deposit(pair_1000, 0);
     await gauge.getReward(owner.address, [ve_underlying.address]);
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
@@ -734,7 +696,7 @@ describe("core", function () {
 
     await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner.address));
     await pair.connect(owner3).approve(gauge.address, pair_1000);
-    await gauge.connect(owner3).deposit(pair_1000, 1);
+    await gauge.connect(owner3).deposit(pair_1000, 0);
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
   });
 
@@ -767,7 +729,7 @@ describe("core", function () {
 
     await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner.address));
     await pair.connect(owner3).approve(gauge.address, pair_1000);
-    await gauge.connect(owner3).deposit(pair_1000, 1);
+    await gauge.connect(owner3).deposit(pair_1000, 0);
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
   });
 
