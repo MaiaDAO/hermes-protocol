@@ -459,7 +459,7 @@ contract Gauge {
         derivedBalances[msg.sender] = _derivedBalance;
         derivedSupply += _derivedBalance;
 
-        _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
+        _writeCheckpoint(msg.sender, _derivedBalance);
         _writeSupplyCheckpoint();
     }
 
