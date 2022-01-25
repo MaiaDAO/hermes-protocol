@@ -672,6 +672,13 @@ contract BaseV1Voter {
         }
     }
 
+    function claimFees(address[] memory _bribes, address[][] memory _tokens, uint _tokenId) external {
+        require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
+        for (uint i = 0; i < _bribes.length; i ++) {
+            Bribe(_bribes[i]).getRewardForOwner(_tokenId, _tokens[i]);
+        }
+    }
+
     function distributeFees(address[] memory _gauges) external {
         for (uint i = 0; i < _gauges.length; i ++) {
             IGauge(_gauges[i]).claimFees();
