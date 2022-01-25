@@ -78,8 +78,8 @@ contract ve_dist {
 
     address public depositor;
 
-    constructor(address _voting_escrow, uint _start_time, address _token, address _depositor) {
-        uint _t = _start_time / WEEK * WEEK;
+    constructor(address _voting_escrow, address _token, address _depositor) {
+        uint _t = block.timestamp / WEEK * WEEK;
         start_time = _t;
         last_token_time = _t;
         time_cursor = _t;
@@ -90,7 +90,7 @@ contract ve_dist {
     }
 
     function timestamp() external view returns (uint) {
-        return block.timestamp;
+        return block.timestamp / WEEK * WEEK;
     }
 
     function _checkpoint_token() internal {
