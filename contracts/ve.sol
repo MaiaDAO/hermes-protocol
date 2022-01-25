@@ -1010,7 +1010,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 _tokenId = tokenId;
         _mint(_to, _tokenId);
 
-        _deposit_for(_to, _tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE, false);
+        _deposit_for(msg.sender, _tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE, false);
         return _tokenId;
     }
 

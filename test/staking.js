@@ -112,24 +112,19 @@ describe("staking", function () {
     const pair_1000000 = ethers.BigNumber.from("1000000000000000000000000");
     await ve_underlying.approve(staking.address, pair_1000000);
     await ve_underlying.approve(gauge.address, pair_1000000);
-    console.log(await staking.rewardPerTokenStored());
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.notifyRewardAmount(pair_1000000);
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000000);
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
-    console.log(await staking.rewardPerTokenStored());
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await ve_underlying.approve(staking.address, pair_1000000);
     await ve_underlying.approve(gauge.address, pair_1000000);
     await staking.notifyRewardAmount(pair_1000000);
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000000);
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
-    console.log(await gauge.derivedSupply());
-    console.log(await staking.totalSupply());
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
-    console.log(await staking.rewardPerTokenStored());
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
   });
 
   it("notify rewards and compare owner1", async function () {
@@ -140,36 +135,32 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
     await staking.withdraw(pair_1000);
@@ -178,9 +169,8 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
     await staking.withdraw(pair_1000);
@@ -189,9 +179,8 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
   });
 
 
@@ -289,36 +278,32 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
     await staking.withdraw(pair_1000);
@@ -327,9 +312,8 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
     await staking.withdraw(pair_1000);
@@ -338,9 +322,8 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
   });
 
 
@@ -352,25 +335,23 @@ describe("staking", function () {
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000000);
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await ve_underlying.approve(staking.address, pair_1000000);
     await ve_underlying.approve(gauge.address, pair_1000000);
     await staking.notifyRewardAmount(pair_1000000);
     await gauge.notifyRewardAmount(ve_underlying.address, pair_1000000);
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     console.log(await gauge.derivedSupply());
     console.log(await staking.totalSupply());
   });
 
 
 
-  it("notify rewards and compare onwer1", async function () {
+  it("notify rewards and compare owner1", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000000000000000");
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
@@ -378,36 +359,32 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await network.provider.send("evm_increaseTime", [1800])
     await network.provider.send("evm_mine")
     await staking.withdraw(pair_1000);
@@ -416,17 +393,14 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     const sb = await ve_underlying.balanceOf(owner.address);
     await staking.getReward();
     const sa = await ve_underlying.balanceOf(owner.address);
     const gb = await ve_underlying.balanceOf(owner.address);
     await gauge.getReward(owner.address, [ve_underlying.address])
     const ga = await ve_underlying.balanceOf(owner.address);
-    console.log(sa.sub(sb));
-    console.log(ga.sub(gb));
     await network.provider.send("evm_increaseTime", [604800])
     await network.provider.send("evm_mine")
     await staking.withdraw(pair_1000);
@@ -435,9 +409,9 @@ describe("staking", function () {
     await stake.approve(gauge.address, pair_1000);
     await staking.stake(pair_1000);
     await gauge.deposit(pair_1000, 1);
-    console.log(await staking.rewardPerTokenStored());
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
-    console.log(await gauge.rewardPerTokenStored(ve_underlying.address));
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
+    expect(await staking.rewardPerTokenStored()).to.above(ethers.BigNumber.from("1330355346300364281191"))
   });
 
 

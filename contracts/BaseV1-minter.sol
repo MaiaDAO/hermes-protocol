@@ -13,7 +13,7 @@ library Math {
 interface ve {
     function token() external view returns (address);
     function totalSupply() external view returns (uint);
-    function create_lock(uint, uint) external returns (uint);
+    function create_lock_for(uint, uint, address) external returns (uint);
     function transferFrom(address, address, uint) external;
 }
 
@@ -74,8 +74,7 @@ contract BaseV1Minter {
         _token.mint(address(this), max);
         _token.approve(address(_ve), type(uint).max);
         for (uint i = 0; i < claimants.length; i++) {
-            uint id = _ve.create_lock(amounts[i], lock);
-            _ve.transferFrom(address(this), claimants[i], id);
+            _ve.create_lock_for(amounts[i], lock, claimants[i]);
         }
         initializer = address(0);
     }
