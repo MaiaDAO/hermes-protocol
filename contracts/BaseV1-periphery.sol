@@ -192,6 +192,8 @@ contract BaseV1Router01 {
         uint amountAMin,
         uint amountBMin
     ) internal returns (uint amountA, uint amountB) {
+        require(amountADesired >= amountAMin);
+        require(amountBDesired >= amountBMin);
         // create the pair if it doesn't exist yet
         address _pair = IBaseV1Factory(factory).getPair(tokenA, tokenB, stable);
         if (_pair == address(0)) {
