@@ -388,8 +388,8 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     mapping(uint256 => uint256) public user_point_epoch;
     mapping(uint256 => int128) public slope_changes; // time -> signed slope change
 
-    string constant public name = "ve";
-    string constant public symbol = "ve";
+    string constant public name = "veNFT";
+    string constant public symbol = "veNFT";
     string constant public version = "1.0.0";
     uint256 constant public decimals = 18;
 
@@ -638,7 +638,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         address _sender
     ) internal {
         // Check requirements
-        assert(_isApprovedOrOwner(_sender, _tokenId));
+        require(_isApprovedOrOwner(_sender, _tokenId));
         // Clear approval. Throws if `_from` is not the current owner
         _clearApproval(_from, _tokenId);
         // Remove NFT. Throws if `_tokenId` is not a valid NFT
@@ -733,13 +733,13 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     function approve(address _approved, uint256 _tokenId) public {
         address owner = idToOwner[_tokenId];
         // Throws if `_tokenId` is not a valid NFT
-        assert(owner != address(0));
+        require(owner != address(0));
         // Throws if `_approved` is the current owner
-        assert(_approved != owner);
+        require(_approved != owner);
         // Check requirements
         bool senderIsOwner = (idToOwner[_tokenId] == msg.sender);
         bool senderIsApprovedForAll = (ownerToOperators[owner])[msg.sender];
-        assert(senderIsOwner || senderIsApprovedForAll);
+        require(senderIsOwner || senderIsApprovedForAll);
         // Set the approval
         idToApprovals[_tokenId] = _approved;
         emit Approval(owner, _approved, _tokenId);
@@ -957,8 +957,8 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     }
 
     function merge(uint256 _from, uint256 _to) external {
-        assert(_isApprovedOrOwner(msg.sender, _from));
-        assert(_isApprovedOrOwner(msg.sender, _to));
+        require(_isApprovedOrOwner(msg.sender, _from));
+        require(_isApprovedOrOwner(msg.sender, _to));
 
         LockedBalance memory _locked0 = locked[_from];
         LockedBalance memory _locked1 = locked[_to];
