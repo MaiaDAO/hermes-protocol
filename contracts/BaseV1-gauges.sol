@@ -527,8 +527,33 @@ contract Gauge {
 
 contract BaseV1GaugeFactory {
     address public last_gauge;
+    address[] public gauges;    
+    uint256 public gaugesLength;
+    mapping(address => address[]) public gaugesByPoolAddress;
+    mapping(address => address[]) public gaugesByBribeAddress;
+    mapping(address => address[]) public gaugesByVeAddress;
+    mapping(address => address[]) public gaugesByVoterAddress;
+    mapping(address => uint256) public gaugesByPoolAddressLength;
+    mapping(address => uint256) public gaugesByBribeAddressLength;
+    mapping(address => uint256) public gaugesByVeAddressLength;
+    mapping(address => uint256) public gaugesByVoterAddressLength;
+    
     function createGauge(address _pool, address _bribe, address _ve) external returns (address) {
         last_gauge = address(new Gauge(_pool, _bribe, _ve, msg.sender));
+        registerGauge(last_gauge, _pool, _bribe, _ve, msg.sender);
         return last_gauge;
+    }
+    
+    function registerGauge(address _gauge, address _pool, address _bribe, address _ve, address _voter) internal {
+        gauges.push(_gauge);
+        gaugesByPoolAddress[_pool].push(_gauge);
+        gaugesByBribeAddress[_bribe].push(_gauge);
+        gaugesByVeAddress[_ve].push(_gauge);
+        gaugesByVoterAddress[_voter].push(_gauge);
+        gaugesLength++;
+        gaugesByPoolAddressLength[_pool]++;
+        gaugesByBribeAddressLength[_bribe]++;
+        gaugesByVeAddressLength[_ve]++;
+        gaugesByVoterAddressLength[_voter]++;
     }
 }
