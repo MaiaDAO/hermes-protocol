@@ -308,7 +308,6 @@ contract BaseV1Pair {
         }
 
         uint timeElapsed = block.timestamp - _observation.timestamp;
-        timeElapsed = timeElapsed == 0 ? 1 : timeElapsed;
         uint _reserve0 = (reserve0Cumulative - _observation.reserve0Cumulative) / timeElapsed;
         uint _reserve1 = (reserve1Cumulative - _observation.reserve1Cumulative) / timeElapsed;
         amountOut = _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
