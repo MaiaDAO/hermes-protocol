@@ -293,7 +293,7 @@ contract Gauge {
             uint _reward = earned(tokens[i], account);
             userRewards[tokens[i]][account] = 0;
             lastEarn[tokens[i]][account] = block.timestamp;
-            userRewardPerTokenStored[tokens[i]][account] = rewardPerToken(tokens[i]);
+            userRewardPerTokenStored[tokens[i]][account] = rewardPerTokenStored[tokens[i]];
             if (_reward > 0) _safeTransfer(tokens[i], account, _reward);
         }
 
