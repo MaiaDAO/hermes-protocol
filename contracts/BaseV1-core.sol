@@ -384,8 +384,8 @@ contract BaseV1Pair {
         amount1 = _liquidity * _balance1 / _totalSupply; // using balances ensures pro-rata distribution
         require(amount0 > 0 && amount1 > 0, 'ILB'); // BaseV1: INSUFFICIENT_LIQUIDITY_BURNED
         _burn(address(this), _liquidity);
-        if (amount0 > 0) _safeTransfer(_token0, to, amount0);
-        if (amount1 > 0) _safeTransfer(_token1, to, amount1);
+        _safeTransfer(_token0, to, amount0);
+        _safeTransfer(_token1, to, amount1);
         _balance0 = erc20(_token0).balanceOf(address(this));
         _balance1 = erc20(_token1).balanceOf(address(this));
 
