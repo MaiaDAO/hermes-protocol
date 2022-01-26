@@ -495,6 +495,12 @@ contract BaseV1Voter {
 
     uint public totalWeight; // total voting weight
 
+    event GaugeCreated(address indexed gauge, address creator, address indexed bribe, address indexed pool);
+    event Voted(address indexed voter, uint tokenId, uint weight);
+    event Abstained(uint tokenId, uint weight);
+    event Deposit(address indexed lp, address indexed gauge, uint tokenId, uint amount);
+    event Withdraw(address indexed lp, address indexed gauge, uint tokenId, uint amount);
+
     // simple re-entrancy check
     uint _unlocked = 1;
     modifier lock() {
@@ -562,6 +568,7 @@ contract BaseV1Voter {
                 weights[_pool] -= _votes;
                 votes[_tokenId][_pool] -= _votes;
                 Bribe(bribes[gauges[_pool]])._withdraw(_votes, _tokenId);
+                emit Abstained(_tokenId, _votes);
             }
         }
 
@@ -609,6 +616,7 @@ contract BaseV1Voter {
                 poolVote[_tokenId].push(_pool);
                 votes[_tokenId][_pool] += _poolWeight;
                 Bribe(bribes[_gauge])._deposit(_poolWeight, _tokenId);
+                emit Voted(msg.sender, _tokenId, _poolWeight);
             }
         }
         if (_usedWeight > 0) ve(_ve).voting(_tokenId);
@@ -633,44 +641,20 @@ contract BaseV1Voter {
         registerGauge(_gauge, _pool, _bribe);
         _updateFor(_gauge);
         pools.push(_pool);
+        emit GaugeCreated(_gauge, msg.sender, _bribe, _pool);
         return _gauge;
     }
 
-    mapping(uint => address[]) public attachedGauges;
-
-    function attachedGaugesLength(uint tokenId) external view returns (uint) {
-        return attachedGauges[tokenId].length;
-    }
-
-    function attachTokenToGauge(uint tokenId) external {
+    function attachTokenToGauge(uint tokenId, address account, uint amount) external {
         require(isGauge[msg.sender]);
-        attachedGauges[tokenId].push(msg.sender);
-        ve(_ve).attach(tokenId);
+        if (tokenId > 0) ve(_ve).attach(tokenId);
+        emit Deposit(account, msg.sender, tokenId, amount);
     }
 
-    function detachTokenFromGauge(uint tokenId) external {
+    function detachTokenFromGauge(uint tokenId, address account, uint amount) external {
         require(isGauge[msg.sender]);
-        _remove(attachedGauges[tokenId], msg.sender);
-        ve(_ve).detach(tokenId);
-    }
-
-    function _findIndex(address[] memory array, address element) internal pure returns (uint i) {
-        for (i = 0; i < array.length; i++) {
-            if (array[i] == element) {
-                break;
-            }
-        }
-    }
-
-    function _remove(address[] storage array, address element) internal {
-        uint _index = _findIndex(array, element);
-        uint _length = array.length;
-        if (_index >= _length) return;
-        if (_index < _length-1) {
-            array[_index] = array[_length-1];
-        }
-
-        array.pop();
+        if (tokenId > 0) ve(_ve).detach(tokenId);
+        emit Withdraw(account, msg.sender, tokenId, amount);
     }
 
     function length() external view returns (uint) {

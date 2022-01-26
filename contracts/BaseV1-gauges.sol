@@ -40,8 +40,8 @@ interface IBribe {
 }
 
 interface Voter {
-    function attachTokenToGauge(uint _tokenId) external;
-    function detachTokenFromGauge(uint _tokenId) external;
+    function attachTokenToGauge(uint _tokenId, address account, uint amount) external;
+    function detachTokenFromGauge(uint _tokenId, address account, uint amount) external;
 }
 
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
@@ -456,9 +456,10 @@ contract Gauge {
         require(amount > 0);
         if (tokenId > 0) {
             require(ve(_ve).ownerOf(tokenId) == msg.sender);
-            if (balanceOf[msg.sender] == 0) Voter(voter).attachTokenToGauge(tokenId);
             tokenIds[msg.sender] = tokenId;
         }
+
+        if (balanceOf[msg.sender] == 0) Voter(voter).attachTokenToGauge(tokenId, msg.sender, amount);
 
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
@@ -481,10 +482,10 @@ contract Gauge {
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
 
-        if (tokenId > 0 && balanceOf[msg.sender] == 0) {
-            Voter(voter).detachTokenFromGauge(tokenId);
+        if (tokenId > 0) {
             tokenIds[msg.sender] = 0;
         }
+        if (balanceOf[msg.sender] == 0) Voter(voter).detachTokenFromGauge(tokenId, msg.sender, amount);
 
         uint _derivedBalance = derivedBalances[msg.sender];
         derivedSupply -= _derivedBalance;

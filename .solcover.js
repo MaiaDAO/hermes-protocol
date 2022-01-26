@@ -1,3 +1,3 @@
 module.exports = {
-  skipFiles: ['calculations.sol'],
+  skipFiles: ['test/*'],
 };
