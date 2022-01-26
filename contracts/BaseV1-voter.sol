@@ -520,28 +520,6 @@ contract BaseV1Voter {
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
     mapping(address => bool) public isGauge;
 
-    address[] public gaugesArray;
-    mapping(address => address[]) public gaugesByPoolAddress;
-    mapping(address => address[]) public gaugesByBribeAddress;
-
-    function gaugesByPoolAddressLength(address _pool) external view returns (uint) {
-        return gaugesByPoolAddress[_pool].length;
-    }
-
-    function gaugesByBribeAddressLength(address _bribe) external view returns (uint) {
-        return gaugesByBribeAddress[_bribe].length;
-    }
-
-    function gaugesArrayLength() external view returns (uint) {
-        return gaugesArray.length;
-    }
-
-    function registerGauge(address _gauge, address _pool, address _bribe) internal {
-        gaugesArray.push(_gauge);
-        gaugesByPoolAddress[_pool].push(_gauge);
-        gaugesByBribeAddress[_bribe].push(_gauge);
-    }
-
     constructor(address __ve, address _factory, address  _gauges) {
         _ve = __ve;
         factory = _factory;
@@ -638,7 +616,6 @@ contract BaseV1Voter {
         gauges[_pool] = _gauge;
         poolForGauge[_gauge] = _pool;
         isGauge[_gauge] = true;
-        registerGauge(_gauge, _pool, _bribe);
         _updateFor(_gauge);
         pools.push(_pool);
         emit GaugeCreated(_gauge, msg.sender, _bribe, _pool);
