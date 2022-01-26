@@ -72,11 +72,20 @@ describe("core", function () {
   });
 
   it("create lock", async function () {
-    await ve_underlying.approve(ve.address, ethers.BigNumber.from("1000000000000000000"));
-    await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);
+    await ve_underlying.approve(ve.address, ethers.BigNumber.from("500000000000000000"));
+    await ve.create_lock(ethers.BigNumber.from("500000000000000000"), 4 * 365 * 86400);
+    expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("495063075414519385"));
+    expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("500000000000000000"));
+  });
+
+  it("increase lock", async function () {
+    await ve_underlying.approve(ve.address, ethers.BigNumber.from("500000000000000000"));
+    await ve.increase_amount(1, ethers.BigNumber.from("500000000000000000"));
+    await ve.increase_unlock_time(1, 4 * 365 * 86400);
     expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("995063075414519385"));
     expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("1000000000000000000"));
   });
+
 
   it("steal NFT", async function () {
     await expect(ve.connect(owner2).transferFrom(owner.address, owner2.address, 1)).to.be.reverted

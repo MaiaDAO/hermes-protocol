@@ -184,9 +184,9 @@ describe("oracles", function () {
     const ust_1000 = ethers.BigNumber.from("1000000000");
     const mim_1000 = ethers.BigNumber.from("1000000000000000000000");
 
-    console.log(await pair.current(ust.address, ust_1000));
-    console.log(await pair.current(mim.address, mim_1000));
-    console.log(await pair.quote(mim.address, mim_1000, 1));
+    expect(await pair.current(ust.address, ust_1000)).to.equal(ethers.BigNumber.from("999999491983679298588"));
+    expect(await pair.current(mim.address, mim_1000)).to.equal(ethers.BigNumber.from("999999507"));
+    expect(await pair.quote(mim.address, mim_1000, 1)).to.equal(ethers.BigNumber.from("999999506"));
   });
 
 });
