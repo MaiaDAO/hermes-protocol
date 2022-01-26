@@ -389,7 +389,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     mapping(uint256 => int128) public slope_changes; // time -> signed slope change
 
     mapping(uint => uint) public attachments;
-    mapping(uint => bool) public voted;
+    mapping(uint256 => uint256) public voted;
     address public voter;
 
     string constant public name = "veNFT";
@@ -642,7 +642,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         uint256 _tokenId,
         address _sender
     ) internal {
-        require(attachments[_tokenId] == 0 && !voted[_tokenId], "attached");
+        require(attachments[_tokenId] == 0 && !_tokenHasVoted(_tokenId), "attached");
         // Check requirements
         require(_isApprovedOrOwner(_sender, _tokenId));
         // Clear approval. Throws if `_from` is not the current owner
@@ -969,12 +969,12 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
 
     function voting(uint _tokenId) external {
         require(msg.sender == voter);
-        voted[_tokenId] = true;
+        _setTokenHasVoted(_tokenId, true);
     }
 
     function abstain(uint _tokenId) external {
         require(msg.sender == voter);
-        voted[_tokenId] = false;
+        _setTokenHasVoted(_tokenId, false);
     }
 
     function attach(uint _tokenId) external {
@@ -988,7 +988,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     }
 
     function merge(uint256 _from, uint256 _to) external {
-        require(attachments[_from] == 0 && !voted[_from], "attached");
+        require(attachments[_from] == 0 && !_tokenHasVoted(_from), "attached");
         require(_isApprovedOrOwner(msg.sender, _from));
         require(_isApprovedOrOwner(msg.sender, _to));
 
@@ -1093,7 +1093,7 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev Only possible if the lock has expired
     function withdraw(uint256 _tokenId) external nonreentrant {
         assert(_isApprovedOrOwner(msg.sender, _tokenId));
-        require(attachments[_tokenId] == 0 && !voted[_tokenId], "attached");
+        require(attachments[_tokenId] == 0 && !_tokenHasVoted(_tokenId), "attached");
 
         LockedBalance memory _locked = locked[_tokenId];
         require(block.timestamp >= _locked.end, "The lock didn't expire");
@@ -1360,5 +1360,21 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         _removeTokenFrom(msg.sender, _tokenId);
 
         emit Transfer(owner, address(0), _tokenId);
+    }
+
+    function _tokenHasVoted(uint256 _tokenId) internal view returns (bool) {
+        uint256 _mask = 1 << _tokenId % 256;
+        return (voted[_tokenId / 256] & _mask) != 0;
+    }
+
+    /// @dev use a bitmap to store vote state per token id
+    /// @param _tokenId The token id
+    /// @param _hasVoted True to set as voted, false to unset
+    function _setTokenHasVoted(uint256 _tokenId, bool _hasVoted) internal {
+        if (_hasVoted) {
+            voted[_tokenId / 256] |= 1 << _tokenId % 256;
+        } else {
+            voted[_tokenId / 256] &= 0 << _tokenId % 256;
+        }
     }
 }
