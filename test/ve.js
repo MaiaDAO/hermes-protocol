@@ -82,12 +82,10 @@ describe("ve", function () {
     const ERC165_INTERFACE_ID = 0x01ffc9a7;
     const ERC721_INTERFACE_ID = 0x80ac58cd;
     const ERC721_METADATA_INTERFACE_ID = 0x5b5e139f;
-    const ERC721_ENUMERABLE_INTERFACE_ID = 0x780e9d63;
 
     expect(await ve.supportsInterface(ERC165_INTERFACE_ID)).to.be.true;
     expect(await ve.supportsInterface(ERC721_INTERFACE_ID)).to.be.true;
     expect(await ve.supportsInterface(ERC721_METADATA_INTERFACE_ID)).to.be.true;
-    expect(await ve.supportsInterface(ERC721_ENUMERABLE_INTERFACE_ID)).to.be.true;
   });
 
   it("Check supportsInterface handles unsupported interfaces correctly", async function () {
