@@ -61,7 +61,7 @@ describe("core", function () {
     await dai.mint(owner2.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     await dai.mint(owner3.address, ethers.BigNumber.from("1000000000000000000000000000000"));
     ve_underlying = await token.deploy('VE', 'VE', 18, owner.address);
-    await ve_underlying.mint(owner.address, ethers.BigNumber.from("10000000000000000000000000"));
+    await ve_underlying.mint(owner.address, ethers.BigNumber.from("20000000000000000000000000"));
     await ve_underlying.mint(owner2.address, ethers.BigNumber.from("10000000000000000000000000"));
     await ve_underlying.mint(owner3.address, ethers.BigNumber.from("10000000000000000000000000"));
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
@@ -423,6 +423,15 @@ describe("core", function () {
     expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("3000000000000000000"));
   });
 
+  it("vote hacking", async function () {
+    await gauge_factory.vote(1, [pair.address, pair.address, pair.address, pair.address], [5000,5000,5000,5000]);
+    expect(await gauge_factory.usedWeights(1)).to.closeTo((await ve.balanceOfNFT(1)), 1000);
+    expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
+    await gauge_factory.reset(1);
+    expect(await gauge_factory.usedWeights(1)).to.above(await ve.balanceOfNFT(1));
+    expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
+  });
+
   it("gauge vote & bribe balanceOf", async function () {
     await gauge_factory.vote(1, [pair.address, pair2.address], [5000,5000]);
     await gauge_factory.vote(3, [pair.address, pair2.address], [500000,500000]);
@@ -430,6 +439,13 @@ describe("core", function () {
     console.log(await gauge_factory.usedWeights(3));
     expect(await gauge_factory.totalWeight()).to.not.equal(0);
     expect(await bribe.balanceOf(1)).to.not.equal(0);
+  });
+
+  it("vote hacking break mint", async function () {
+    await gauge_factory.vote(1, [pair.address, pair.address, pair.address, pair.address], [5000,5000,5000,5000]);
+
+    expect(await gauge_factory.usedWeights(1)).to.closeTo((await ve.balanceOfNFT(1)), 1000);
+    expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
   });
 
   it("gauge distribute based on voting", async function () {

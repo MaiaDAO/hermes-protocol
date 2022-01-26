@@ -428,11 +428,7 @@ contract BaseV1Pair {
         _update(erc20(token0).balanceOf(address(this)), erc20(token1).balanceOf(address(this)), reserve0, reserve1);
     }
 
-    function _f(uint x0, uint xy, uint y) internal pure returns (uint) {
-        return x0*(y*y/1e18*y/1e18)/1e18+(x0*x0/1e18*x0/1e18)*y/1e18-xy;
-    }
-
-    function _f2(uint x0, uint y) internal pure returns (uint) {
+    function _f(uint x0, uint y) internal pure returns (uint) {
         return x0*(y*y/1e18*y/1e18)/1e18+(x0*x0/1e18*x0/1e18)*y/1e18;
     }
 
@@ -444,24 +440,7 @@ contract BaseV1Pair {
     function _get_y(uint x0, uint xy, uint y) internal pure returns (uint) {
         for (uint i = 0; i < 255; i++) {
             uint y_prev = y;
-            y = y - (_f(x0,xy,y)*1e18/_d(x0,y));
-            if (y > y_prev) {
-                if (y - y_prev <= 1) {
-                    return y;
-                }
-            } else {
-                if (y_prev - y <= 1) {
-                    return y;
-                }
-            }
-        }
-        return y;
-    }
-
-    function _get_y2(uint x0, uint xy, uint y) internal pure returns (uint) {
-        for (uint i = 0; i < 255; i++) {
-            uint y_prev = y;
-            uint k = _f2(x0, y);
+            uint k = _f(x0, y);
             if (k < xy) {
                 uint dy = (xy - k)*1e18/_d(x0, y);
                 y = y + dy;
@@ -495,7 +474,7 @@ contract BaseV1Pair {
             _reserve1 = _reserve1 * 1e18 / decimals1;
             (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
             amountIn = tokenIn == token0 ? amountIn * 1e18 / decimals0 : amountIn * 1e18 / decimals1;
-            uint y = reserveB - _get_y2(amountIn+reserveA, xy, reserveB);
+            uint y = reserveB - _get_y(amountIn+reserveA, xy, reserveB);
             return y * (tokenIn == token0 ? decimals1 : decimals0) / 1e18;
         } else {
             (uint reserveA, uint reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);

@@ -560,7 +560,7 @@ contract BaseV1Voter {
                 _updateFor(gauges[_pool]);
                 totalWeight -= _votes;
                 weights[_pool] -= _votes;
-                votes[_tokenId][_pool] = 0;
+                votes[_tokenId][_pool] -= _votes;
                 Bribe(bribes[gauges[_pool]])._withdraw(_votes, _tokenId);
             }
         }
