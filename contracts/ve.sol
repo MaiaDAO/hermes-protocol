@@ -287,25 +287,6 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint tokenId) external view returns (string memory);
 }
 
-interface IERC721Enumerable is IERC721 {
-    /**
-     * @dev Returns the total amount of tokens stored by the contract.
-     */
-    function totalSupply() external view returns (uint);
-
-    /**
-     * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
-     * Use along with {balanceOf} to enumerate all of ``owner``'s tokens.
-     */
-    function tokenOfOwnerByIndex(address owner, uint index) external view returns (uint);
-
-    /**
-     * @dev Returns a token ID at a given `index` of all the tokens stored by the contract.
-     * Use along with {totalSupply} to enumerate all tokens.
-     */
-    function tokenByIndex(uint index) external view returns (uint);
-}
-
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
  */
@@ -350,14 +331,13 @@ struct LockedBalance {
     uint end;
 }
 
-contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
+contract ve is IERC721, IERC721Metadata {
     enum DepositType {
         DEPOSIT_FOR_TYPE,
         CREATE_LOCK_TYPE,
         INCREASE_LOCK_AMOUNT,
         INCREASE_UNLOCK_TIME,
-        MERGE_TYPE,
-        SPLIT_TYPE
+        MERGE_TYPE
     }
 
     event Deposit(
@@ -431,9 +411,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @dev ERC165 interface ID of ERC721Metadata
     bytes4 constant ERC721_METADATA_INTERFACE_ID = 0x5b5e139f;
 
-    /// @dev ERC165 interface ID of ERC721Enumerable
-    bytes4 constant ERC721_ENUMERABLE_INTERFACE_ID = 0x780e9d63;
-
     /// @dev reentrancy guard
     uint8 constant _not_entered = 1;
     uint8 constant _entered = 2;
@@ -458,7 +435,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
         supportedInterfaces[ERC165_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_METADATA_INTERFACE_ID] = true;
-        supportedInterfaces[ERC721_ENUMERABLE_INTERFACE_ID] = true;
 
         // mint-ish
         emit Transfer(address(0), address(this), tokenId);
@@ -526,11 +502,6 @@ contract ve is IERC721, IERC721Enumerable, IERC721Metadata {
     /// @param _operator The address that acts on behalf of the owner.
     function isApprovedForAll(address _owner, address _operator) external view returns (bool) {
         return (ownerToOperators[_owner])[_operator];
-    }
-
-    /// @dev  Get token by index
-    function tokenByIndex(uint _tokenId) external pure returns (uint) {
-        return _tokenId;
     }
 
     /// @dev  Get token by index
