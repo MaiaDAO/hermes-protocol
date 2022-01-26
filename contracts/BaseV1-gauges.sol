@@ -475,6 +475,10 @@ contract Gauge {
         _writeSupplyCheckpoint();
     }
 
+    function withdrawAll() external {
+        withdraw(balanceOf[msg.sender]);
+    }
+
     function withdraw(uint amount) public lock {
         uint tokenId = tokenIds[msg.sender];
 
@@ -482,9 +486,7 @@ contract Gauge {
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
 
-        if (tokenId > 0) {
-            tokenIds[msg.sender] = 0;
-        }
+        if (tokenId > 0) tokenIds[msg.sender] = 0;
         if (balanceOf[msg.sender] == 0) Voter(voter).detachTokenFromGauge(tokenId, msg.sender, amount);
 
         uint _derivedBalance = derivedBalances[msg.sender];

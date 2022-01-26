@@ -6,11 +6,11 @@ contract voter_test {
           return 0;
       }
 
-      function attachTokenToGauge(uint tokenId) external {
+      function attachTokenToGauge(uint tokenId, address account, uint amount) external {
 
       }
 
-      function detachTokenFromGauge(uint tokenId) external {
-          
+      function detachTokenFromGauge(uint tokenId, address account, uint amount) external {
+
       }
 }
