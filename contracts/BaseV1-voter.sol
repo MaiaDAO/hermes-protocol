@@ -607,7 +607,7 @@ contract BaseV1Voter {
                 totalWeight += _poolWeight;
                 weights[_pool] += _poolWeight;
                 poolVote[_tokenId].push(_pool);
-                votes[_tokenId][_pool] = _poolWeight;
+                votes[_tokenId][_pool] += _poolWeight;
                 Bribe(bribes[_gauge])._deposit(_poolWeight, _tokenId);
             }
         }

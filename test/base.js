@@ -638,6 +638,7 @@ describe("core", function () {
     await network.provider.send("evm_mine")
     expect(await ve.balanceOfNFT(1)).to.be.equal(0);
     expect(await ve.totalSupply()).to.be.equal(0);
+    await gauge_factory.reset(1);
     await ve.withdraw(1);
   });
 
