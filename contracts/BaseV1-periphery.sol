@@ -117,12 +117,30 @@ contract BaseV1Router01 {
     }
 
     // performs chained getAmountOut calculations on any number of pairs
+    function getAmountOut(uint amountIn, address tokenIn, address tokenOut) public view returns (uint amount, bool stable) {
+        address pair = pairFor(tokenIn, tokenOut, true);
+        uint amountStable;
+        uint amountVolatile;
+        if (IBaseV1Factory(factory).isPair(pair)) {
+            amountStable = IBaseV1Pair(pair).getAmountOut(amountIn, tokenIn);
+        }
+        pair = pairFor(tokenIn, tokenOut, false);
+        if (IBaseV1Factory(factory).isPair(pair)) {
+            amountVolatile = IBaseV1Pair(pair).getAmountOut(amountIn, tokenIn);
+        }
+        return amountStable > amountVolatile ? (amountStable, true) : (amountVolatile, false);
+    }
+
+    // performs chained getAmountOut calculations on any number of pairs
     function getAmountsOut(uint amountIn, route[] memory routes) public view returns (uint[] memory amounts) {
         require(routes.length >= 1, 'BaseV1Router: INVALID_PATH');
         amounts = new uint[](routes.length+1);
         amounts[0] = amountIn;
         for (uint i = 0; i < routes.length; i++) {
-            amounts[i+1] = IBaseV1Pair(pairFor(routes[i].from, routes[i].to, routes[i].stable)).getAmountOut(amounts[i], routes[i].from);
+            address pair = pairFor(routes[i].from, routes[i].to, routes[i].stable);
+            if (IBaseV1Factory(factory).isPair(pair)) {
+                amounts[i+1] = IBaseV1Pair(pair).getAmountOut(amounts[i], routes[i].from);
+            }
         }
     }
 
