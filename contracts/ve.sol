@@ -978,6 +978,10 @@ contract ve is IERC721, IERC721Metadata {
         _deposit_for(msg.sender, _to, value0, end, _locked1, DepositType.MERGE_TYPE, true);
     }
 
+    function block_number() external view returns (uint) {
+        return block.number;
+    }
+
     /// @notice Record global data to checkpoint
     function checkpoint() external {
         _checkpoint(0, LockedBalance(0, 0), LockedBalance(0, 0));
