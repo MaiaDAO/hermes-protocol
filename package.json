@@ -1,6 +1,7 @@
 {
   "name": "hardhat-project",
   "devDependencies": {
+    "@float-capital/solidity-coverage": "^0.7.17",
     "@nomiclabs/hardhat-ethers": "^2.0.3",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "chai": "^4.3.4",
