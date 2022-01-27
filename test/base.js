@@ -108,11 +108,24 @@ describe("core", function () {
     await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);
     expect(await ve.balanceOfNFT(2)).to.above(ethers.BigNumber.from("995063075414519385"));
     expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("2000000000000000000"));
+    console.log(await ve.totalSupply());
     await ve.merge(2, 1);
+    console.log(await ve.totalSupply());
     expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("1990063075414519385"));
     expect(await ve.balanceOfNFT(2)).to.equal(ethers.BigNumber.from("0"));
     expect((await ve.locked(2)).amount).to.equal(ethers.BigNumber.from("0"));
     expect(await ve.ownerOf(2)).to.equal('0x0000000000000000000000000000000000000000');
+    await ve_underlying.approve(ve.address, ethers.BigNumber.from("1000000000000000000"));
+    await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);
+    expect(await ve.balanceOfNFT(3)).to.above(ethers.BigNumber.from("995063075414519385"));
+    expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("3000000000000000000"));
+    console.log(await ve.totalSupply());
+    await ve.merge(3, 1);
+    console.log(await ve.totalSupply());
+    expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("1990063075414519385"));
+    expect(await ve.balanceOfNFT(3)).to.equal(ethers.BigNumber.from("0"));
+    expect((await ve.locked(3)).amount).to.equal(ethers.BigNumber.from("0"));
+    expect(await ve.ownerOf(3)).to.equal('0x0000000000000000000000000000000000000000');
   });
 
   it("confirm ust deployment", async function () {
@@ -438,7 +451,7 @@ describe("core", function () {
     await ve_underlying.approve(ve.address, ethers.BigNumber.from("1000000000000000000"));
     await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);
     expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("995063075414519385"));
-    expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("3000000000000000000"));
+    expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("4000000000000000000"));
   });
 
   it("vote hacking", async function () {
@@ -452,9 +465,9 @@ describe("core", function () {
 
   it("gauge vote & bribe balanceOf", async function () {
     await gauge_factory.vote(1, [pair.address, pair2.address], [5000,5000]);
-    await gauge_factory.vote(3, [pair.address, pair2.address], [500000,500000]);
+    await gauge_factory.vote(4, [pair.address, pair2.address], [500000,500000]);
     console.log(await gauge_factory.usedWeights(1));
-    console.log(await gauge_factory.usedWeights(3));
+    console.log(await gauge_factory.usedWeights(4));
     expect(await gauge_factory.totalWeight()).to.not.equal(0);
     expect(await bribe.balanceOf(1)).to.not.equal(0);
   });
