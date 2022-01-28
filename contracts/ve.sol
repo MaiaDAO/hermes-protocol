@@ -694,6 +694,17 @@ contract ve is IERC721, IERC721Metadata {
         }
     }
 
+    /// @dev Transfers the ownership of an NFT from one address to another address.
+    ///      Throws unless `msg.sender` is the current owner, an authorized operator, or the
+    ///      approved address for this NFT.
+    ///      Throws if `_from` is not the current owner.
+    ///      Throws if `_to` is the zero address.
+    ///      Throws if `_tokenId` is not a valid NFT.
+    ///      If `_to` is a smart contract, it calls `onERC721Received` on `_to` and throws if
+    ///      the return value is not `bytes4(keccak256("onERC721Received(address,address,uint,bytes)"))`.
+    /// @param _from The current owner of the NFT.
+    /// @param _to The new owner.
+    /// @param _tokenId The NFT to transfer.
     function safeTransferFrom(
         address _from,
         address _to,
@@ -897,14 +908,13 @@ contract ve is IERC721, IERC721Metadata {
     /// @param _value Amount to deposit
     /// @param unlock_time New time when to unlock the tokens, or 0 if unchanged
     /// @param locked_balance Previous locked amount / timestamp
+    /// @param deposit_type The type of deposit
     function _deposit_for(
-        address _from,
         uint _tokenId,
         uint _value,
         uint unlock_time,
         LockedBalance memory locked_balance,
-        DepositType deposit_type,
-        bool should_merge
+        DepositType deposit_type
     ) internal {
         LockedBalance memory _locked = locked_balance;
         uint supply_before = supply;
@@ -926,11 +936,12 @@ contract ve is IERC721, IERC721Metadata {
         // _locked.end > block.timestamp (always)
         _checkpoint(_tokenId, old_locked, _locked);
 
-        if (_value != 0 && !should_merge) {
-            assert(IERC20(token).transferFrom(_from, address(this), _value));
+        address from = msg.sender;
+        if (_value != 0 && deposit_type != DepositType.MERGE_TYPE) {
+            assert(IERC20(token).transferFrom(from, address(this), _value));
         }
 
-        emit Deposit(_from, _tokenId, _value, _locked.end, deposit_type, block.timestamp);
+        emit Deposit(from, _tokenId, _value, _locked.end, deposit_type, block.timestamp);
         emit Supply(supply_before, supply_before + _value);
     }
 
@@ -975,7 +986,7 @@ contract ve is IERC721, IERC721Metadata {
         _locked0.end = 0;
         locked[_from] = _locked0;
         _burn(_from);
-        _deposit_for(msg.sender, _to, value0, end, _locked1, DepositType.MERGE_TYPE, true);
+        _deposit_for(_to, value0, end, _locked1, DepositType.MERGE_TYPE);
     }
 
     function block_number() external view returns (uint) {
@@ -998,7 +1009,7 @@ contract ve is IERC721, IERC721Metadata {
         assert(_value > 0); // dev: need non-zero value
         require(_locked.amount > 0, 'No existing lock found');
         require(_locked.end > block.timestamp, 'Cannot add to expired lock. Withdraw');
-        _deposit_for(msg.sender, _tokenId, _value, 0, _locked, DepositType.DEPOSIT_FOR_TYPE, false);
+        _deposit_for(_tokenId, _value, 0, _locked, DepositType.DEPOSIT_FOR_TYPE);
     }
 
     /// @notice Deposit `_value` tokens for `_to` and lock for `_lock_duration`
@@ -1016,7 +1027,7 @@ contract ve is IERC721, IERC721Metadata {
         uint _tokenId = tokenId;
         _mint(_to, _tokenId);
 
-        _deposit_for(msg.sender, _tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE, false);
+        _deposit_for(_tokenId, _value, unlock_time, locked[_tokenId], DepositType.CREATE_LOCK_TYPE);
         return _tokenId;
     }
 
@@ -1046,7 +1057,7 @@ contract ve is IERC721, IERC721Metadata {
         require(_locked.amount > 0, 'No existing lock found');
         require(_locked.end > block.timestamp, 'Cannot add to expired lock. Withdraw');
 
-        _deposit_for(msg.sender, _tokenId, _value, 0, _locked, DepositType.INCREASE_LOCK_AMOUNT, false);
+        _deposit_for(_tokenId, _value, 0, _locked, DepositType.INCREASE_LOCK_AMOUNT);
     }
 
     /// @notice Extend the unlock time for `_tokenId`
@@ -1062,7 +1073,7 @@ contract ve is IERC721, IERC721Metadata {
         require(unlock_time > _locked.end, 'Can only increase lock duration');
         require(unlock_time <= block.timestamp + MAXTIME, 'Voting lock can be 4 years max');
 
-        _deposit_for(msg.sender, _tokenId, 0, unlock_time, _locked, DepositType.INCREASE_UNLOCK_TIME, false);
+        _deposit_for(_tokenId, 0, unlock_time, _locked, DepositType.INCREASE_UNLOCK_TIME);
     }
 
     /// @notice Withdraw all tokens for `_tokenId`
