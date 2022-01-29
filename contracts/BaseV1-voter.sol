@@ -548,6 +548,7 @@ contract BaseV1Voter {
     }
 
     function reset(uint _tokenId) external {
+        require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
         _reset(_tokenId);
         ve(_ve).abstain(_tokenId);
     }
