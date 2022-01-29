@@ -71,7 +71,6 @@ contract ve_dist {
 
     address public voting_escrow;
     address public token;
-    uint public total_received;
     uint public token_last_balance;
 
     uint[1000000000000000] public ve_supply;

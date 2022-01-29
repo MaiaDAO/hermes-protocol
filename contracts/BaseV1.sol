@@ -11,8 +11,8 @@ contract BaseV1 {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    event Transfer(address from, address to, uint256 value);
-    event Approval(address owner, address spender, uint256 value);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
     event LogChangeVault(address indexed oldVault, address indexed newVault, uint indexed effectiveTime);
 
     bytes32 public DOMAIN_SEPARATOR;
@@ -39,7 +39,7 @@ contract BaseV1 {
         minter = _minter;
     }
 
-    function approve(address _spender, uint256 _value) public returns (bool) {
+    function approve(address _spender, uint256 _value) external returns (bool) {
         allowance[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;
@@ -88,7 +88,7 @@ contract BaseV1 {
         return true;
     }
 
-    function transfer(address _to, uint256 _value) public returns (bool) {
+    function transfer(address _to, uint256 _value) external returns (bool) {
         return _transfer(msg.sender, _to, _value);
     }
 
@@ -96,7 +96,7 @@ contract BaseV1 {
         address _from,
         address _to,
         uint256 _value
-    ) public returns (bool) {
+    ) external returns (bool) {
         uint256 allowed_from = allowance[_from][msg.sender];
         if (allowed_from != type(uint).max) {
             allowance[_from][msg.sender] -= _value;

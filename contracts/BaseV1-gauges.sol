@@ -298,7 +298,7 @@ contract Gauge {
         (userRewards[token][account], lastEarn[token][account]) = _batchUserRewards(token, account, maxRuns);
     }
 
-    function getReward(address account, address[] memory tokens) public lock {
+    function getReward(address account, address[] memory tokens) external lock {
         require(msg.sender == account || msg.sender == voter);
         for (uint i = 0; i < tokens.length; i++) {
             (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);

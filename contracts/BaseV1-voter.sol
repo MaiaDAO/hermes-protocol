@@ -283,7 +283,7 @@ contract Bribe {
     }
 
     // allows a user to claim rewards for a given token
-    function getReward(uint tokenId, address[] memory tokens) public lock  {
+    function getReward(uint tokenId, address[] memory tokens) external lock  {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
         for (uint i = 0; i < tokens.length; i++) {
             (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
@@ -299,7 +299,7 @@ contract Bribe {
     }
 
     // used by BaseV1Voter to allow batched reward claims
-    function getRewardForOwner(uint tokenId, address[] memory tokens) public lock  {
+    function getRewardForOwner(uint tokenId, address[] memory tokens) external lock  {
         require(msg.sender == factory);
         address _owner = ve(_ve).ownerOf(tokenId);
         for (uint i = 0; i < tokens.length; i++) {
@@ -684,7 +684,7 @@ contract BaseV1Voter {
         }
     }
 
-    function updateAll() public {
+    function updateAll() external {
         updateFor(0, pools.length);
     }
 
