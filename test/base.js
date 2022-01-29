@@ -459,8 +459,18 @@ describe("core", function () {
     expect(await gauge_factory.usedWeights(1)).to.closeTo((await ve.balanceOfNFT(1)), 1000);
     expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
     await gauge_factory.reset(1);
-    expect(await gauge_factory.usedWeights(1)).to.above(await ve.balanceOfNFT(1));
+    expect(await gauge_factory.usedWeights(1)).to.below(await ve.balanceOfNFT(1));
+    expect(await gauge_factory.usedWeights(1)).to.equal(0);
     expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
+    expect(await bribe.balanceOf(1)).to.equal(0);
+  });
+
+  it("gauge poke hacking", async function () {
+    expect(await gauge_factory.usedWeights(1)).to.equal(0);
+    expect(await gauge_factory.votes(1, pair.address)).to.equal(0);
+    await gauge_factory.poke(1);
+    expect(await gauge_factory.usedWeights(1)).to.equal(0);
+    expect(await gauge_factory.votes(1, pair.address)).to.equal(0);
   });
 
   it("gauge vote & bribe balanceOf", async function () {
@@ -472,11 +482,25 @@ describe("core", function () {
     expect(await bribe.balanceOf(1)).to.not.equal(0);
   });
 
+  it("gauge poke hacking", async function () {
+    const weight_before = (await gauge_factory.usedWeights(1));
+    const votes_before = (await gauge_factory.votes(1, pair.address));
+    await gauge_factory.poke(1);
+    expect(await gauge_factory.usedWeights(1)).to.be.below(weight_before);
+    expect(await gauge_factory.votes(1, pair.address)).to.be.below(votes_before);
+  });
+
   it("vote hacking break mint", async function () {
     await gauge_factory.vote(1, [pair.address, pair.address, pair.address, pair.address], [5000,5000,5000,5000]);
 
     expect(await gauge_factory.usedWeights(1)).to.closeTo((await ve.balanceOfNFT(1)), 1000);
     expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
+  });
+
+  it("gauge poke hacking", async function () {
+    expect(await gauge_factory.usedWeights(1)).to.equal(await gauge_factory.votes(1, pair.address));
+    await gauge_factory.poke(1);
+    expect(await gauge_factory.usedWeights(1)).to.equal(await gauge_factory.votes(1, pair.address));
   });
 
   it("gauge distribute based on voting", async function () {

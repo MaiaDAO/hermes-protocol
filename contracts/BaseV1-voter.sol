@@ -570,7 +570,7 @@ contract BaseV1Voter {
                 emit Abstained(_tokenId, _votes);
             }
         }
-
+        usedWeights[_tokenId] = 0;
         delete poolVote[_tokenId];
     }
 
@@ -579,19 +579,14 @@ contract BaseV1Voter {
         uint _poolCnt = _poolVote.length;
         uint[] memory _weights = new uint[](_poolCnt);
 
-        uint _prevUsedWeight = usedWeights[_tokenId];
-        uint _weight = ve(_ve).balanceOfNFT(_tokenId);
-
         for (uint i = 0; i < _poolCnt; i ++) {
-            uint _prevWeight = votes[_tokenId][_poolVote[i]];
-            _weights[i] = _prevWeight * _weight / _prevUsedWeight;
+            _weights[i] = votes[_tokenId][_poolVote[i]];
         }
 
         _vote(_tokenId, _poolVote, _weights);
     }
 
     function _vote(uint _tokenId, address[] memory _poolVote, uint[] memory _weights) internal {
-        require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
         _reset(_tokenId);
         uint _poolCnt = _poolVote.length;
         uint _weight = ve(_ve).balanceOfNFT(_tokenId);
@@ -623,6 +618,7 @@ contract BaseV1Voter {
     }
 
     function vote(uint tokenId, address[] calldata _poolVote, uint[] calldata _weights) external {
+        require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
         require(_poolVote.length == _weights.length);
         _vote(tokenId, _poolVote, _weights);
     }
