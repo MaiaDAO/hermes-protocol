@@ -30,5 +30,10 @@ jobs:
         run: npm install
 
       # Runs a single command using the runners shell
-      - name: Run a one-line script
+      - name: npx hardhat test
         run: npx hardhat test
+        
+      - name: slither-static-analysis
+        continue-on-error: true
+        uses: luisfontes19/slither-static-analysis-action@v0.3.4
+
