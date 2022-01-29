@@ -479,6 +479,8 @@ contract Bribe {
             rewardRate[token] = (amount + _left) / DURATION;
         }
         require(rewardRate[token] > 0);
+        uint balance = erc20(token).balanceOf(address(this));
+        require(rewardRate[token] <= balance / DURATION, "Provided reward too high");
         periodFinish[token] = block.timestamp + DURATION;
         if (!isReward[token]) {
             isReward[token] = true;
