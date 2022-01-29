@@ -49,6 +49,8 @@ contract BaseV1Minter {
 
     address initializer;
 
+    event Mint(address indexed sender, uint weekly, uint circulating_supply, uint circulating_emission);
+
     constructor(
         address __voter, // the voting & distribution system
         address  __ve, // the ve(3,3) system that will be locked into
@@ -122,6 +124,8 @@ contract BaseV1Minter {
 
             _token.approve(address(_voter), weekly);
             _voter.notifyRewardAmount(weekly);
+
+            emit Mint(msg.sender, weekly, circulating_supply(), circulating_emission());
         }
         return _period;
     }

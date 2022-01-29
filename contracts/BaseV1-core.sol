@@ -138,6 +138,7 @@ contract BaseV1Pair {
         address indexed to
     );
     event Sync(uint reserve0, uint reserve1);
+    event Claim(address indexed sender, address indexed recipient, uint amount0, uint amount1);
 
     constructor() {
         (address _token0, address _token1, bool _stable) = BaseV1Factory(msg.sender).getInitializable();
@@ -197,6 +198,8 @@ contract BaseV1Pair {
         claimable1[recipient] = 0;
 
         BaseV1Fees(fees).claimFeesFor(recipient, claimed0, claimed1);
+
+        emit Claim(msg.sender, recipient, claimed0, claimed1);
     }
 
     // Accrue fees on token0
