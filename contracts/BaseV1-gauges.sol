@@ -76,6 +76,12 @@ contract Gauge {
     address[] public rewards;
     mapping(address => bool) public isReward;
 
+    event Deposit(address indexed from, uint tokenId, uint amount);
+    event Withdraw(address indexed from, uint tokenId, uint amount);
+    event NotifyReward(address indexed from, address indexed reward, uint amount);
+    event ClaimFees(address indexed from, uint claimed0, uint claimed1);
+    event ClaimRewards(address indexed from, address indexed reward, uint amount);
+
     function claimFees() external returns (uint claimed0, uint claimed1) {
         (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
         (address _token0, address _token1) = IBaseV1Core(stake).tokens();
@@ -83,6 +89,8 @@ contract Gauge {
         _safeApprove(_token1, bribe, claimed1);
         IBribe(bribe).notifyRewardAmount(_token0, claimed0);
         IBribe(bribe).notifyRewardAmount(_token1, claimed1);
+
+        emit ClaimFees(msg.sender, claimed0, claimed1);
     }
 
 
@@ -300,6 +308,8 @@ contract Gauge {
             lastEarn[tokens[i]][account] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][account] = rewardPerTokenStored[tokens[i]];
             if (_reward > 0) _safeTransfer(tokens[i], account, _reward);
+
+            emit ClaimRewards(msg.sender, tokens[i], _reward);
         }
 
         uint _derivedBalance = derivedBalances[account];
@@ -452,6 +462,10 @@ contract Gauge {
         return reward;
     }
 
+    function depositAll(uint tokenId) external {
+        deposit(erc20(stake).balanceOf(msg.sender), tokenId);
+    }
+
     function deposit(uint amount, uint tokenId) public lock {
         require(amount > 0);
         if (tokenId > 0) {
@@ -473,6 +487,8 @@ contract Gauge {
 
         _writeCheckpoint(msg.sender, _derivedBalance);
         _writeSupplyCheckpoint();
+
+        emit Deposit(msg.sender, tokenId, amount);
     }
 
     function withdrawAll() external {
@@ -497,6 +513,8 @@ contract Gauge {
 
         _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
         _writeSupplyCheckpoint();
+
+        emit Withdraw(msg.sender, tokenId, amount);
     }
 
     function left(address token) external view returns (uint) {
@@ -525,6 +543,8 @@ contract Gauge {
             isReward[token] = true;
             rewards.push(token);
         }
+
+        emit NotifyReward(msg.sender, token, amount);
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {

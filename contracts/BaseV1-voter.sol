@@ -72,6 +72,11 @@ contract Bribe {
     address[] public rewards;
     mapping(address => bool) public isReward;
 
+    event Deposit(address indexed from, uint tokenId, uint amount);
+    event Withdraw(address indexed from, uint tokenId, uint amount);
+    event NotifyReward(address indexed from, address indexed reward, uint amount);
+    event ClaimRewards(address indexed from, address indexed reward, uint amount);
+
     uint public totalSupply;
     mapping(uint => uint) public balanceOf;
 
@@ -288,6 +293,8 @@ contract Bribe {
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerTokenStored[tokens[i]];
             if (_reward > 0) _safeTransfer(tokens[i], msg.sender, _reward);
+
+            emit ClaimRewards(msg.sender, tokens[i], _reward);
         }
     }
 
@@ -303,6 +310,8 @@ contract Bribe {
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerTokenStored[tokens[i]];
             if (_reward > 0) _safeTransfer(tokens[i], _owner, _reward);
+
+            emit ClaimRewards(_owner, tokens[i], _reward);
         }
     }
 
@@ -440,6 +449,8 @@ contract Bribe {
 
         _writeCheckpoint(tokenId, balanceOf[tokenId]);
         _writeSupplyCheckpoint();
+
+        emit Deposit(msg.sender, tokenId, amount);
     }
 
     function _withdraw(uint amount, uint tokenId) external {
@@ -449,6 +460,8 @@ contract Bribe {
 
         _writeCheckpoint(tokenId, balanceOf[tokenId]);
         _writeSupplyCheckpoint();
+
+        emit Withdraw(msg.sender, tokenId, amount);
     }
 
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
@@ -471,6 +484,8 @@ contract Bribe {
             isReward[token] = true;
             rewards.push(token);
         }
+
+        emit NotifyReward(msg.sender, token, amount);
     }
 
     function _safeTransfer(address token, address to, uint256 value) internal {
