@@ -607,7 +607,7 @@ contract BaseV1Voter {
             address _gauge = gauges[_pool];
             uint _poolWeight = _weights[i] * _weight / _totalVoteWeight;
 
-            if (_gauge != address(0x0)) {
+            if (isGauge[_gauge]) {
                 _updateFor(_gauge);
                 _usedWeight += _poolWeight;
                 totalWeight += _poolWeight;
