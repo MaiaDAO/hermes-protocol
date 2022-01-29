@@ -580,13 +580,6 @@ contract BaseV1Pair {
             token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        require(token.code.length > 0);
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))));
-    }
 }
 
 contract BaseV1Factory {

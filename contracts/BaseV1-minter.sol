@@ -118,7 +118,7 @@ contract BaseV1Minter {
                 _token.mint(address(this), _required-_balanceOf);
             }
 
-            _token.transfer(address(_ve_dist), _growth);
+            require(_token.transfer(address(_ve_dist), _growth));
             _ve_dist.checkpoint_token(); // checkpoint token balance that was just minted in ve_dist
             _ve_dist.checkpoint_total_supply(); // checkpoint supply
 

@@ -79,23 +79,23 @@ contract StakingRewards {
     function stake(uint _amount) external updateReward(msg.sender) {
         _totalSupply += _amount;
         _balances[msg.sender] += _amount;
-        stakingToken.transferFrom(msg.sender, address(this), _amount);
+        require(stakingToken.transferFrom(msg.sender, address(this), _amount));
     }
 
     function withdraw(uint _amount) external updateReward(msg.sender) {
         _totalSupply -= _amount;
         _balances[msg.sender] -= _amount;
-        stakingToken.transfer(msg.sender, _amount);
+        require(stakingToken.transfer(msg.sender, _amount));
     }
 
     function getReward() external updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
         rewards[msg.sender] = 0;
-        rewardsToken.transfer(msg.sender, reward);
+        require(rewardsToken.transfer(msg.sender, reward));
     }
 
     function notifyRewardAmount(uint256 reward) external updateReward(address(0)) {
-        rewardsToken.transferFrom(msg.sender, address(this), reward);
+        require(rewardsToken.transferFrom(msg.sender, address(this), reward));
         if (block.timestamp >= periodFinish) {
             rewardRate = reward / rewardsDuration;
         } else {

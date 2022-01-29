@@ -556,6 +556,7 @@ contract BaseV1Voter {
     function _reset(uint _tokenId) internal {
         address[] storage _poolVote = poolVote[_tokenId];
         uint _poolVoteCnt = _poolVote.length;
+        uint _totalWeigth = 0;
 
         for (uint i = 0; i < _poolVoteCnt; i ++) {
             address _pool = _poolVote[i];
@@ -563,13 +564,14 @@ contract BaseV1Voter {
 
             if (_votes > 0) {
                 _updateFor(gauges[_pool]);
-                totalWeight -= _votes;
+                _totalWeigth += _votes;
                 weights[_pool] -= _votes;
                 votes[_tokenId][_pool] -= _votes;
                 Bribe(bribes[gauges[_pool]])._withdraw(_votes, _tokenId);
                 emit Abstained(_tokenId, _votes);
             }
         }
+        totalWeight -= _totalWeigth;
         usedWeights[_tokenId] = 0;
         delete poolVote[_tokenId];
     }
@@ -591,6 +593,7 @@ contract BaseV1Voter {
         uint _poolCnt = _poolVote.length;
         uint _weight = ve(_ve).balanceOfNFT(_tokenId);
         uint _totalVoteWeight = 0;
+        uint _totalWeight = 0;
         uint _usedWeight = 0;
 
         for (uint i = 0; i < _poolCnt; i ++) {
@@ -605,7 +608,7 @@ contract BaseV1Voter {
             if (isGauge[_gauge]) {
                 _updateFor(_gauge);
                 _usedWeight += _poolWeight;
-                totalWeight += _poolWeight;
+                _totalWeight += _poolWeight;
                 weights[_pool] += _poolWeight;
                 poolVote[_tokenId].push(_pool);
                 votes[_tokenId][_pool] += _poolWeight;
@@ -614,6 +617,7 @@ contract BaseV1Voter {
             }
         }
         if (_usedWeight > 0) ve(_ve).voting(_tokenId);
+        totalWeight += _totalWeight;
         usedWeights[_tokenId] = _usedWeight;
     }
 
