@@ -518,6 +518,8 @@ contract BaseV1Voter {
     event Abstained(uint tokenId, uint weight);
     event Deposit(address indexed lp, address indexed gauge, uint tokenId, uint amount);
     event Withdraw(address indexed lp, address indexed gauge, uint tokenId, uint amount);
+    event NotifyReward(address indexed sender, address indexed reward, uint amount);
+    event DistributeReward(address indexed sender, address indexed gauge, uint amount);
 
     // simple re-entrancy check
     uint _unlocked = 1;
@@ -666,6 +668,7 @@ contract BaseV1Voter {
         if (_ratio > 0) {
           index += _ratio;
         }
+        emit NotifyReward(msg.sender, base, amount);
     }
 
     function updateFor(address[] memory _gauges) external {
@@ -718,10 +721,10 @@ contract BaseV1Voter {
         }
     }
 
-    function claimFees(address[] memory _bribes, address[][] memory _tokens, uint _tokenId) external {
+    function claimFees(address[] memory _fees, address[][] memory _tokens, uint _tokenId) external {
         require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
-        for (uint i = 0; i < _bribes.length; i ++) {
-            Bribe(_bribes[i]).getRewardForOwner(_tokenId, _tokens[i]);
+        for (uint i = 0; i < _fees.length; i ++) {
+            Bribe(_fees[i]).getRewardForOwner(_tokenId, _tokens[i]);
         }
     }
 
@@ -738,6 +741,7 @@ contract BaseV1Voter {
         if (_claimable > _left) {
             claimable[_gauge] = 0;
             IGauge(_gauge).notifyRewardAmount(base, _claimable);
+            emit DistributeReward(msg.sender, _gauge, _claimable);
         }
     }
 

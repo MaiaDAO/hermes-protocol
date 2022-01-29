@@ -335,9 +335,10 @@ contract Gauge {
         uint _balance = balanceOf[account];
         uint _derived = _balance * 40 / 100;
         uint _adjusted = 0;
-        if (account == ve(_ve).ownerOf(_tokenId)) {
+        uint _supply = erc20(_ve).totalSupply();
+        if (account == ve(_ve).ownerOf(_tokenId) && _supply > 0) {
             _adjusted = ve(_ve).balanceOfNFT(_tokenId);
-            _adjusted = (totalSupply * _adjusted / erc20(_ve).totalSupply()) * 60 / 100;
+            _adjusted = (totalSupply * _adjusted / _supply) * 60 / 100;
         }
         return Math.min((_derived + _adjusted), _balance);
     }
