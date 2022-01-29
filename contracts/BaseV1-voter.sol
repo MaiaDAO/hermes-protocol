@@ -574,7 +574,7 @@ contract BaseV1Voter {
         delete poolVote[_tokenId];
     }
 
-    function poke(uint _tokenId) public {
+    function poke(uint _tokenId) external {
         address[] memory _poolVote = poolVote[_tokenId];
         uint _poolCnt = _poolVote.length;
         uint[] memory _weights = new uint[](_poolCnt);
