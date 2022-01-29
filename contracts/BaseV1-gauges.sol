@@ -506,6 +506,7 @@ contract Gauge {
     }
 
     function notifyRewardAmount(address token, uint amount) external lock {
+        require(token != reward);
         (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
 
         if (block.timestamp >= periodFinish[token]) {
