@@ -103,7 +103,7 @@ contract BaseV1Router01 {
     }
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
-    function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
+    function quoteLiquidity(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
         require(amountA > 0, 'BaseV1Router: INSUFFICIENT_AMOUNT');
         require(reserveA > 0 && reserveB > 0, 'BaseV1Router: INSUFFICIENT_LIQUIDITY');
         amountB = amountA * reserveB / reserveA;
@@ -168,12 +168,12 @@ contract BaseV1Router01 {
             liquidity = Math.sqrt(amountA * amountB) - MINIMUM_LIQUIDITY;
         } else {
 
-            uint amountBOptimal = quote(amountADesired, reserveA, reserveB);
+            uint amountBOptimal = quoteLiquidity(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
                 (amountA, amountB) = (amountADesired, amountBOptimal);
                 liquidity = Math.min(amountA * _totalSupply / reserveA, amountB * _totalSupply / reserveB);
             } else {
-                uint amountAOptimal = quote(amountBDesired, reserveB, reserveA);
+                uint amountAOptimal = quoteLiquidity(amountBDesired, reserveB, reserveA);
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
                 liquidity = Math.min(amountA * _totalSupply / reserveA, amountB * _totalSupply / reserveB);
             }
@@ -221,12 +221,12 @@ contract BaseV1Router01 {
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint amountBOptimal = quote(amountADesired, reserveA, reserveB);
+            uint amountBOptimal = quoteLiquidity(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
                 require(amountBOptimal >= amountBMin, 'BaseV1Router: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint amountAOptimal = quote(amountBDesired, reserveB, reserveA);
+                uint amountAOptimal = quoteLiquidity(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
                 require(amountAOptimal >= amountAMin, 'BaseV1Router: INSUFFICIENT_A_AMOUNT');
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
