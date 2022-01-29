@@ -979,8 +979,8 @@ contract ve is IERC721, IERC721Metadata {
         uint value0 = uint(int256(_locked0.amount));
         uint end = _locked0.end >= _locked1.end ? _locked0.end : _locked1.end;
 
-        _checkpoint(_from, _locked0, LockedBalance(0, 0));
         locked[_from] = LockedBalance(0, 0);
+        _checkpoint(_from, _locked0, LockedBalance(0, 0));
         _burn(_from);
         _deposit_for(_to, value0, end, _locked1, DepositType.MERGE_TYPE);
     }
