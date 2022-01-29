@@ -921,8 +921,7 @@ contract ve is IERC721, IERC721Metadata {
 
         supply = supply_before + _value;
         LockedBalance memory old_locked;
-        old_locked.amount = _locked.amount;
-        old_locked.end = _locked.end;
+        (old_locked.amount, old_locked.end) = (_locked.amount, _locked.end);
         // Adding to existing lock, or if a lock is expired - creating a new one
         _locked.amount += int128(int256(_value));
         if (unlock_time != 0) {
@@ -978,13 +977,10 @@ contract ve is IERC721, IERC721Metadata {
         LockedBalance memory _locked0 = locked[_from];
         LockedBalance memory _locked1 = locked[_to];
         uint value0 = uint(int256(_locked0.amount));
-        uint end = _locked0.end > _locked1.end ? _locked0.end : _locked1.end;
+        uint end = _locked0.end >= _locked1.end ? _locked0.end : _locked1.end;
 
         _checkpoint(_from, _locked0, LockedBalance(0, 0));
-
-        _locked0.amount = 0;
-        _locked0.end = 0;
-        locked[_from] = _locked0;
+        locked[_from] = LockedBalance(0, 0);
         _burn(_from);
         _deposit_for(_to, value0, end, _locked1, DepositType.MERGE_TYPE);
     }
@@ -1006,7 +1002,7 @@ contract ve is IERC721, IERC721Metadata {
     function deposit_for(uint _tokenId, uint _value) external nonreentrant {
         LockedBalance memory _locked = locked[_tokenId];
 
-        assert(_value > 0); // dev: need non-zero value
+        require(_value > 0); // dev: need non-zero value
         require(_locked.amount > 0, 'No existing lock found');
         require(_locked.end > block.timestamp, 'Cannot add to expired lock. Withdraw');
         _deposit_for(_tokenId, _value, 0, _locked, DepositType.DEPOSIT_FOR_TYPE);
@@ -1019,7 +1015,7 @@ contract ve is IERC721, IERC721Metadata {
     function _create_lock(uint _value, uint _lock_duration, address _to) internal returns (uint) {
         uint unlock_time = (block.timestamp + _lock_duration) / WEEK * WEEK; // Locktime is rounded down to weeks
 
-        assert(_value > 0); // dev: need non-zero value
+        require(_value > 0); // dev: need non-zero value
         require(unlock_time > block.timestamp, 'Can only lock until time in the future');
         require(unlock_time <= block.timestamp + MAXTIME, 'Voting lock can be 4 years max');
 
@@ -1086,20 +1082,14 @@ contract ve is IERC721, IERC721Metadata {
         require(block.timestamp >= _locked.end, "The lock didn't expire");
         uint value = uint(int256(_locked.amount));
 
-        LockedBalance memory old_locked;
-        old_locked.amount = _locked.amount;
-        old_locked.end = _locked.end;
-
-        _locked.end = 0;
-        _locked.amount = 0;
-        locked[_tokenId] = _locked;
+        locked[_tokenId] = LockedBalance(0,0);
         uint supply_before = supply;
         supply = supply_before - value;
 
         // old_locked can have either expired <= timestamp or zero end
         // _locked has only 0 end
         // Both can have >= 0 amount
-        _checkpoint(_tokenId, old_locked, _locked);
+        _checkpoint(_tokenId, _locked, LockedBalance(0,0));
 
         assert(IERC20(token).transfer(msg.sender, value));
 
