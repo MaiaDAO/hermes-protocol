@@ -376,7 +376,7 @@ contract ve is IERC721, IERC721Metadata {
     string constant public name = "veNFT";
     string constant public symbol = "veNFT";
     string constant public version = "1.0.0";
-    uint constant public decimals = 18;
+    uint8 constant public decimals = 18;
 
     /// @dev Current count of token
     uint tokenId;
