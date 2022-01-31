@@ -61,7 +61,6 @@ contract BaseV1Minter {
         _voter = voter(__voter);
         _ve = ve(__ve);
         _ve_dist = ve_dist(__ve_dist);
-        active_period = (block.timestamp + week) / week * week;
     }
 
     function initialize(
@@ -76,6 +75,7 @@ contract BaseV1Minter {
             _ve.create_lock_for(amounts[i], lock, claimants[i]);
         }
         initializer = address(0);
+        active_period = (block.timestamp + week) / week * week;
     }
 
     // calculate circulating supply as total token supply - locked supply
@@ -85,7 +85,7 @@ contract BaseV1Minter {
 
     // emission calculation is 2% of available supply to mint adjusted by circulating / total supply
     function calculate_emission() public view returns (uint) {
-        return weekly * emission / target_base * circulating_supply() / _token.totalSupply();
+        return weekly * emission * circulating_supply() / target_base / _token.totalSupply();
     }
 
     // weekly emission takes the max of calculated (aka target) emission versus circulating tail end emission
@@ -106,7 +106,7 @@ contract BaseV1Minter {
     // update period can only be called once per cycle (1 week)
     function update_period() external returns (uint) {
         uint _period = active_period;
-        if (block.timestamp >= _period + week) { // only trigger if new week
+        if (block.timestamp >= _period + week && initializer == address(0)) { // only trigger if new week
             _period = block.timestamp / week * week;
             active_period = _period;
             weekly = weekly_emission();

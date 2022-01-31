@@ -91,6 +91,7 @@ contract BaseV1Pair {
     address public immutable token0;
     address public immutable token1;
     address public immutable fees;
+    address immutable factory;
 
     // Structure to capture time period obervations every 30 minutes, used for local oracles
     struct Observation {
@@ -142,6 +143,7 @@ contract BaseV1Pair {
     event Claim(address indexed sender, address indexed recipient, uint amount0, uint amount1);
 
     constructor() {
+        factory = msg.sender;
         (address _token0, address _token1, bool _stable) = BaseV1Factory(msg.sender).getInitializable();
         (token0, token1, stable) = (_token0, _token1, _stable);
         fees = address(new BaseV1Fees(_token0, _token1));
@@ -388,6 +390,7 @@ contract BaseV1Pair {
 
     // this low-level function should be called from a contract which performs important safety checks
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock {
+        require(!BaseV1Factory(factory).isPaused());
         require(amount0Out > 0 || amount1Out > 0, 'IOA'); // BaseV1: INSUFFICIENT_OUTPUT_AMOUNT
         (uint _reserve0, uint _reserve1) =  (reserve0, reserve1);
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'IL'); // BaseV1: INSUFFICIENT_LIQUIDITY
@@ -584,6 +587,9 @@ contract BaseV1Pair {
 
 contract BaseV1Factory {
 
+    bool public isPaused;
+    address immutable pauser;
+
     mapping(address => mapping(address => mapping(bool => address))) public getPair;
     address[] public allPairs;
     mapping(address => bool) public isPair; // simplified check if its a pair, given that `stable` flag might not be available in peripherals
@@ -594,8 +600,18 @@ contract BaseV1Factory {
 
     event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint);
 
+    constructor() {
+        pauser = msg.sender;
+        isPaused = false;
+    }
+
     function allPairsLength() external view returns (uint) {
         return allPairs.length;
+    }
+
+    function setPause(bool _state) external {
+        require(msg.sender == pauser);
+        isPaused = _state;
     }
 
     function pairCodeHash() external pure returns (bytes32) {
