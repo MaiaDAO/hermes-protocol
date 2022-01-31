@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.11;
+pragma solidity 0.8.11;
 
 library Math {
     function max(uint a, uint b) internal pure returns (uint) {
@@ -117,7 +117,7 @@ contract Bribe {
    mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
-    uint _unlocked = 1;
+    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;
@@ -522,7 +522,7 @@ contract BaseV1Voter {
     event DistributeReward(address indexed sender, address indexed gauge, uint amount);
 
     // simple re-entrancy check
-    uint _unlocked = 1;
+    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

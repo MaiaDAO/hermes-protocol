@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.11;
+pragma solidity 0.8.11;
 
 library Math {
     function max(uint a, uint b) internal pure returns (uint) {
@@ -55,8 +55,8 @@ contract Gauge {
     uint public derivedSupply;
     mapping(address => uint) public derivedBalances;
 
-    uint constant DURATION = 7 days; // rewards are released over 7 days
-    uint constant PRECISION = 10 ** 18;
+    uint internal constant DURATION = 7 days; // rewards are released over 7 days
+    uint internal constant PRECISION = 10 ** 18;
 
     // default snx staking contract implementation
     mapping(address => uint) public rewardRate;
@@ -131,7 +131,7 @@ contract Gauge {
     mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
     // simple re-entrancy check
-    uint _unlocked = 1;
+    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

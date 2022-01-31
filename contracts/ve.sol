@@ -351,10 +351,10 @@ contract ve is IERC721, IERC721Metadata {
     event Withdraw(address indexed provider, uint tokenId, uint value, uint ts);
     event Supply(uint prevSupply, uint supply);
 
-    uint constant WEEK = 1 weeks;
-    uint constant MAXTIME = 4 * 365 * 86400;
-    int128 constant iMAXTIME = 4 * 365 * 86400;
-    uint constant MULTIPLIER = 1 ether;
+    uint internal constant WEEK = 1 weeks;
+    uint internal constant MAXTIME = 4 * 365 * 86400;
+    int128 internal constant iMAXTIME = 4 * 365 * 86400;
+    uint internal constant MULTIPLIER = 1 ether;
 
     address public token;
     uint public supply;
@@ -379,42 +379,42 @@ contract ve is IERC721, IERC721Metadata {
     uint8 constant public decimals = 18;
 
     /// @dev Current count of token
-    uint tokenId;
+    uint internal tokenId;
 
     /// @dev Mapping from NFT ID to the address that owns it.
-    mapping(uint => address) idToOwner;
+    mapping(uint => address) internal idToOwner;
 
     /// @dev Mapping from NFT ID to approved address.
-    mapping(uint => address) idToApprovals;
+    mapping(uint => address) internal idToApprovals;
 
     /// @dev Mapping from owner address to count of his tokens.
-    mapping(address => uint) ownerToNFTokenCount;
+    mapping(address => uint) internal ownerToNFTokenCount;
 
     /// @dev Mapping from owner address to mapping of index to tokenIds
-    mapping(address => mapping(uint => uint)) ownerToNFTokenIdList;
+    mapping(address => mapping(uint => uint)) internal ownerToNFTokenIdList;
 
     /// @dev Mapping from NFT ID to index of owner
-    mapping(uint => uint) tokenToOwnerIndex;
+    mapping(uint => uint) internal tokenToOwnerIndex;
 
     /// @dev Mapping from owner address to mapping of operator addresses.
-    mapping(address => mapping(address => bool)) ownerToOperators;
+    mapping(address => mapping(address => bool)) internal ownerToOperators;
 
     /// @dev Mapping of interface id to bool about whether or not it's supported
-    mapping(bytes4 => bool) supportedInterfaces;
+    mapping(bytes4 => bool) internal supportedInterfaces;
 
     /// @dev ERC165 interface ID of ERC165
-    bytes4 constant ERC165_INTERFACE_ID = 0x01ffc9a7;
+    bytes4 internal constant ERC165_INTERFACE_ID = 0x01ffc9a7;
 
     /// @dev ERC165 interface ID of ERC721
-    bytes4 constant ERC721_INTERFACE_ID = 0x80ac58cd;
+    bytes4 internal constant ERC721_INTERFACE_ID = 0x80ac58cd;
 
     /// @dev ERC165 interface ID of ERC721Metadata
-    bytes4 constant ERC721_METADATA_INTERFACE_ID = 0x5b5e139f;
+    bytes4 internal constant ERC721_METADATA_INTERFACE_ID = 0x5b5e139f;
 
     /// @dev reentrancy guard
-    uint8 constant _not_entered = 1;
-    uint8 constant _entered = 2;
-    uint8 _entered_state = 1;
+    uint8 internal constant _not_entered = 1;
+    uint8 internal constant _entered = 2;
+    uint8 internal _entered_state = 1;
     modifier nonreentrant() {
         require(_entered_state == _not_entered);
         _entered_state = _entered;

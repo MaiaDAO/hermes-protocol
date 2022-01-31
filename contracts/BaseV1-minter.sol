@@ -34,20 +34,20 @@ interface ve_dist {
 // codifies the minting rules as per ve(3,3), abstracted from the token to support any token that allows minting
 
 contract BaseV1Minter {
-    uint constant week = 86400 * 7; // allows minting once per week (reset every Thursday 00:00 UTC)
-    uint constant emission = 98;
-    uint constant tail_emission = 2;
-    uint constant target_base = 100; // 2% per week target emission
-    uint constant tail_base = 1000; // 0.2% per week target emission
+    uint internal constant week = 86400 * 7; // allows minting once per week (reset every Thursday 00:00 UTC)
+    uint internal constant emission = 98;
+    uint internal constant tail_emission = 2;
+    uint internal constant target_base = 100; // 2% per week target emission
+    uint internal constant tail_base = 1000; // 0.2% per week target emission
     underlying public immutable _token;
     voter public immutable _voter;
     ve public immutable _ve;
     ve_dist public immutable _ve_dist;
     uint public weekly = 20000000e18;
     uint public active_period;
-    uint constant lock = 86400 * 7 * 52 * 4;
+    uint internal constant lock = 86400 * 7 * 52 * 4;
 
-    address initializer;
+    address internal initializer;
 
     event Mint(address indexed sender, uint weekly, uint circulating_supply, uint circulating_emission);
 

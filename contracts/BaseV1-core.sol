@@ -37,9 +37,9 @@ interface IBaseV1Callee {
 // Base V1 Fees contract is used as a 1:1 pair relationship to split out fees, this ensures that the curve does not need to be modified for LP shares
 contract BaseV1Fees {
 
-    address immutable pair; // The pair it is bonded to
-    address immutable token0; // token0 of pair, saved localy and statically for gas optimization
-    address immutable token1; // Token1 of pair, saved localy and statically for gas optimization
+    address internal immutable pair; // The pair it is bonded to
+    address internal immutable token0; // token0 of pair, saved localy and statically for gas optimization
+    address internal immutable token1; // Token1 of pair, saved localy and statically for gas optimization
 
     constructor(address _token0, address _token1) {
         pair = msg.sender;
@@ -78,9 +78,9 @@ contract BaseV1Pair {
     mapping(address => mapping (address => uint)) public allowance;
     mapping(address => uint) public balanceOf;
 
-    bytes32 DOMAIN_SEPARATOR;
+    bytes32 internal DOMAIN_SEPARATOR;
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    bytes32 constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+    bytes32 internal constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint) public nonces;
 
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
@@ -104,8 +104,8 @@ contract BaseV1Pair {
 
     Observation[] public observations;
 
-    uint immutable decimals0;
-    uint immutable decimals1;
+    uint internal immutable decimals0;
+    uint internal immutable decimals1;
 
     uint public reserve0;
     uint public reserve1;
@@ -160,7 +160,7 @@ contract BaseV1Pair {
     }
 
     // simple re-entrancy check
-    uint _unlocked = 1;
+    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;
@@ -588,9 +588,9 @@ contract BaseV1Factory {
     address[] public allPairs;
     mapping(address => bool) public isPair; // simplified check if its a pair, given that `stable` flag might not be available in peripherals
 
-    address _temp0;
-    address _temp1;
-    bool _temp;
+    address internal _temp0;
+    address internal _temp1;
+    bool internal _temp;
 
     event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint);
 
