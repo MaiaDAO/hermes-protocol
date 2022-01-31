@@ -540,7 +540,7 @@ contract ve is IERC721, IERC721Metadata {
     /// @param _tokenId uint ID Of the token to be removed
     function _removeTokenFromOwnerList(address _from, uint _tokenId) internal {
         // Delete
-        uint current_count = _balance(_from);
+        uint current_count = _balance(_from)-1;
         uint current_index = tokenToOwnerIndex[_tokenId];
 
         if (current_count == current_index) {
