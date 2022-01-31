@@ -61,6 +61,7 @@ contract BaseV1Minter {
         _voter = voter(__voter);
         _ve = ve(__ve);
         _ve_dist = ve_dist(__ve_dist);
+        active_period = (block.timestamp + (2*week)) / week * week;
     }
 
     function initialize(
