@@ -469,14 +469,14 @@ contract Gauge {
 
     function deposit(uint amount, uint tokenId) public lock {
         require(amount > 0);
-        if (tokenId > 0) {
-            uint _currentTokenID = tokenIds[msg.sender];
-            require(_currentTokenID == 0 || _currentTokenID == tokenId);
+
+        if (balanceOf[msg.sender] == 0 || (tokenIds[msg.sender] == 0 && tokenId > 0)) {
+            Voter(voter).attachTokenToGauge(tokenId, msg.sender, amount);
+        }
+        if (tokenId > 0 && tokenIds[msg.sender] == 0) {
             require(ve(_ve).ownerOf(tokenId) == msg.sender);
             tokenIds[msg.sender] = tokenId;
         }
-
-        if (balanceOf[msg.sender] == 0) Voter(voter).attachTokenToGauge(tokenId, msg.sender, amount);
 
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
