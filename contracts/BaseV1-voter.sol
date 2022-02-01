@@ -507,9 +507,9 @@ contract Bribe {
 
 contract BaseV1Voter {
     address public immutable _ve; // the ve token that governs these contracts
-    address internal immutable factory; // the BaseV1Factory
+    address public immutable factory; // the BaseV1Factory
     address internal immutable base;
-    address internal immutable gaugefactory;
+    address public immutable gaugefactory;
 
     uint public totalWeight; // total voting weight
 
