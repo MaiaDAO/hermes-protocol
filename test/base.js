@@ -385,6 +385,22 @@ describe("core", function () {
     expect(await gauge.earned(ve.address, owner.address)).to.equal(0);
   });
 
+  it("veNFT gauge manipulate", async function () {
+    const pair_1000 = ethers.BigNumber.from("1000000000");
+    expect(await gauge.tokenIds(owner.address)).to.equal(0);
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, 1);
+    expect(await gauge.tokenIds(owner.address)).to.equal(1);
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, 2);
+    expect(await gauge.tokenIds(owner.address)).to.equal(1);
+    await gauge.withdrawToken(pair_1000, 2);
+    expect(await gauge.tokenIds(owner.address)).to.equal(1);
+    await gauge.withdrawToken(pair_1000, 1);
+    expect(await gauge.tokenIds(owner.address)).to.equal(0);
+  });
+
+
   it("deploy BaseV1Factory gauge owner2", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
     const pair_2000 = ethers.BigNumber.from("2000000000");
