@@ -2,15 +2,20 @@
 pragma solidity 0.8.11;
 
 contract voter_test {
-      function attachedGaugesLength(uint tokenId) external view returns (uint) {
-          return 0;
-      }
 
-      function attachTokenToGauge(uint tokenId, address account, uint amount) external {
+      function attachTokenToGauge(uint tokenId, address account) external {
 
       }
 
-      function detachTokenFromGauge(uint tokenId, address account, uint amount) external {
+      function detachTokenFromGauge(uint tokenId, address account) external {
+
+      }
+
+      function emitDeposit(uint tokenId, address account, uint amount) external {
+
+      }
+
+      function emitWithdraw(uint tokenId, address account, uint amount) external {
 
       }
 }

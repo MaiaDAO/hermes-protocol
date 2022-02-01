@@ -40,8 +40,10 @@ interface IBribe {
 }
 
 interface Voter {
-    function attachTokenToGauge(uint _tokenId, address account, uint amount) external;
-    function detachTokenFromGauge(uint _tokenId, address account, uint amount) external;
+    function attachTokenToGauge(uint _tokenId, address account) external;
+    function detachTokenFromGauge(uint _tokenId, address account) external;
+    function emitDeposit(uint _tokenId, address account, uint amount) external;
+    function emitWithdraw(uint _tokenId, address account, uint amount) external;
 }
 
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
@@ -470,17 +472,15 @@ contract Gauge {
     function deposit(uint amount, uint tokenId) public lock {
         require(amount > 0);
 
-        if (balanceOf[msg.sender] == 0 || (tokenIds[msg.sender] == 0 && tokenId > 0)) {
-            Voter(voter).attachTokenToGauge(tokenId, msg.sender, amount);
-        }
-        if (tokenId > 0 && tokenIds[msg.sender] == 0) {
-            require(ve(_ve).ownerOf(tokenId) == msg.sender);
-            tokenIds[msg.sender] = tokenId;
-        }
-
         _safeTransferFrom(stake, msg.sender, address(this), amount);
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
+
+        if (tokenIds[msg.sender] == 0 && tokenId > 0) {
+            require(ve(_ve).ownerOf(tokenId) == msg.sender);
+            tokenIds[msg.sender] = tokenId;
+            Voter(voter).attachTokenToGauge(tokenId, msg.sender);
+        }
 
         uint _derivedBalance = derivedBalances[msg.sender];
         derivedSupply -= _derivedBalance;
@@ -491,6 +491,7 @@ contract Gauge {
         _writeCheckpoint(msg.sender, _derivedBalance);
         _writeSupplyCheckpoint();
 
+        Voter(voter).emitDeposit(tokenId, msg.sender, amount);
         emit Deposit(msg.sender, tokenId, amount);
     }
 
@@ -498,17 +499,22 @@ contract Gauge {
         withdraw(balanceOf[msg.sender]);
     }
 
-    function withdraw(uint amount) public lock {
-        uint tokenId = tokenIds[msg.sender];
+    function withdraw(uint amount) public {
+        uint tokenId = 0;
+        if (amount == balanceOf[msg.sender]) {
+            tokenId = tokenIds[msg.sender];
+        }
+        withdrawToken(amount, tokenId);
+    }
 
+    function withdrawToken(uint amount, uint tokenId) public lock {
         totalSupply -= amount;
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
 
-
-        if (balanceOf[msg.sender] == 0) {
-            if (tokenId > 0) tokenIds[msg.sender] = 0;
-            Voter(voter).detachTokenFromGauge(tokenId, msg.sender, amount);
+        if (tokenId == tokenIds[msg.sender] && tokenId > 0) {
+            tokenIds[msg.sender] = 0;
+            Voter(voter).detachTokenFromGauge(tokenId, msg.sender);
         }
 
         uint _derivedBalance = derivedBalances[msg.sender];
@@ -520,6 +526,7 @@ contract Gauge {
         _writeCheckpoint(msg.sender, derivedBalances[msg.sender]);
         _writeSupplyCheckpoint();
 
+        Voter(voter).emitWithdraw(tokenId, msg.sender, amount);
         emit Withdraw(msg.sender, tokenId, amount);
     }
 
