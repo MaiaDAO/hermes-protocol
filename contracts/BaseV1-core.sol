@@ -588,7 +588,8 @@ contract BaseV1Pair {
 contract BaseV1Factory {
 
     bool public isPaused;
-    address immutable pauser;
+    address public pauser;
+    address public pendingPauser;
 
     mapping(address => mapping(address => mapping(bool => address))) public getPair;
     address[] public allPairs;
@@ -607,6 +608,16 @@ contract BaseV1Factory {
 
     function allPairsLength() external view returns (uint) {
         return allPairs.length;
+    }
+
+    function setPauser(address _pauser) external {
+        require(msg.sender == pauser);
+        pendingPauser = _pauser;
+    }
+
+    function acceptPauser() external {
+        require(msg.sender == pendingPauser);
+        pauser = pendingPauser;
     }
 
     function setPause(bool _state) external {
