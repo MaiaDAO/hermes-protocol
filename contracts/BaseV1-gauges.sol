@@ -470,6 +470,8 @@ contract Gauge {
     function deposit(uint amount, uint tokenId) public lock {
         require(amount > 0);
         if (tokenId > 0) {
+            uint _currentTokenID = tokenIds[msg.sender];
+            require(_currentTokenID == 0 || _currentTokenID == tokenId);
             require(ve(_ve).ownerOf(tokenId) == msg.sender);
             tokenIds[msg.sender] = tokenId;
         }
@@ -503,8 +505,11 @@ contract Gauge {
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
 
-        if (tokenId > 0) tokenIds[msg.sender] = 0;
-        if (balanceOf[msg.sender] == 0) Voter(voter).detachTokenFromGauge(tokenId, msg.sender, amount);
+
+        if (balanceOf[msg.sender] == 0) {
+            if (tokenId > 0) tokenIds[msg.sender] = 0;
+            Voter(voter).detachTokenFromGauge(tokenId, msg.sender, amount);
+        }
 
         uint _derivedBalance = derivedBalances[msg.sender];
         derivedSupply -= _derivedBalance;
