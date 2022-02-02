@@ -356,7 +356,7 @@ contract ve is IERC721, IERC721Metadata {
     int128 internal constant iMAXTIME = 4 * 365 * 86400;
     uint internal constant MULTIPLIER = 1 ether;
 
-    address public token;
+    address immutable public token;
     uint public supply;
     mapping(uint => LockedBalance) public locked;
 
