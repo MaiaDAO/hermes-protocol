@@ -36,4 +36,12 @@ jobs:
       - name: slither-static-analysis
         continue-on-error: true
         uses: luisfontes19/slither-static-analysis-action@v0.3.4
+      
+      - name: Run coverage
+        run: npx hardhat coverage
+
+      - name: Upload report
+        run: bash <(curl -s https://codecov.io/bash)
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
