@@ -476,10 +476,15 @@ contract Gauge {
         totalSupply += amount;
         balanceOf[msg.sender] += amount;
 
-        if (tokenIds[msg.sender] == 0 && tokenId > 0) {
+        if (tokenId > 0) {
             require(ve(_ve).ownerOf(tokenId) == msg.sender);
-            tokenIds[msg.sender] = tokenId;
-            Voter(voter).attachTokenToGauge(tokenId, msg.sender);
+            if (tokenIds[msg.sender] == 0) {
+                tokenIds[msg.sender] = tokenId;
+                Voter(voter).attachTokenToGauge(tokenId, msg.sender);
+            }
+            require(tokenIds[msg.sender] == tokenId);
+        } else {
+            tokenId = tokenIds[msg.sender];
         }
 
         uint _derivedBalance = derivedBalances[msg.sender];
@@ -512,9 +517,12 @@ contract Gauge {
         balanceOf[msg.sender] -= amount;
         _safeTransfer(stake, msg.sender, amount);
 
-        if (tokenId == tokenIds[msg.sender] && tokenId > 0) {
+        if (tokenId > 0) {
+            require(tokenId == tokenIds[msg.sender]);
             tokenIds[msg.sender] = 0;
             Voter(voter).detachTokenFromGauge(tokenId, msg.sender);
+        } else {
+            tokenId = tokenIds[msg.sender];
         }
 
         uint _derivedBalance = derivedBalances[msg.sender];
