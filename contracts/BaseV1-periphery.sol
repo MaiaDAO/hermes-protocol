@@ -92,11 +92,11 @@ contract BaseV1Router01 {
     function pairFor(address tokenA, address tokenB, bool stable) public view returns (address pair) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
         pair = address(uint160(uint256(keccak256(abi.encodePacked(
-                hex'ff',
-                factory,
-                keccak256(abi.encodePacked(token0, token1, stable)),
-                pairCodeHash // init code hash
-            )))));
+            hex'ff',
+            factory,
+            keccak256(abi.encodePacked(token0, token1, stable)),
+            pairCodeHash // init code hash
+        )))));
     }
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
@@ -407,10 +407,10 @@ contract BaseV1Router01 {
     }
 
     function swapExactFTMForTokens(uint amountOutMin, route[] calldata routes, address to, uint deadline)
-        external
-        payable
-        ensure(deadline)
-        returns (uint[] memory amounts)
+    external
+    payable
+    ensure(deadline)
+    returns (uint[] memory amounts)
     {
         require(routes[0].from == address(wftm), 'BaseV1Router: INVALID_PATH');
         amounts = getAmountsOut(msg.value, routes);
@@ -421,9 +421,9 @@ contract BaseV1Router01 {
     }
 
     function swapExactTokensForFTM(uint amountIn, uint amountOutMin, route[] calldata routes, address to, uint deadline)
-        external
-        ensure(deadline)
-        returns (uint[] memory amounts)
+    external
+    ensure(deadline)
+    returns (uint[] memory amounts)
     {
         require(routes[routes.length - 1].to == address(wftm), 'BaseV1Router: INVALID_PATH');
         amounts = getAmountsOut(amountIn, routes);
@@ -455,14 +455,14 @@ contract BaseV1Router01 {
     function _safeTransfer(address token, address to, uint256 value) internal {
         require(token.code.length > 0);
         (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+        token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
         require(token.code.length > 0);
         (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+        token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }

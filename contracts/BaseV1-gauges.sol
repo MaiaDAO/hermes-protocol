@@ -98,20 +98,20 @@ contract Gauge {
 
     /// @notice A checkpoint for marking balance
     struct Checkpoint {
-       uint timestamp;
-       uint balanceOf;
+        uint timestamp;
+        uint balanceOf;
     }
 
     /// @notice A checkpoint for marking reward rate
     struct RewardPerTokenCheckpoint {
-       uint timestamp;
-       uint rewardPerToken;
+        uint timestamp;
+        uint rewardPerToken;
     }
 
     /// @notice A checkpoint for marking supply
     struct SupplyCheckpoint {
-       uint timestamp;
-       uint supply;
+        uint timestamp;
+        uint supply;
     }
 
     /// @notice A record of balance checkpoints for each account, by index
@@ -149,12 +149,12 @@ contract Gauge {
     }
 
     /**
-     * @notice Determine the prior balance for an account as of a block number
-     * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
-     * @param account The address of the account to check
-     * @param timestamp The timestamp to get the balance at
-     * @return The balance the account had as of the given block
-     */
+    * @notice Determine the prior balance for an account as of a block number
+    * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
+    * @param account The address of the account to check
+    * @param timestamp The timestamp to get the balance at
+    * @return The balance the account had as of the given block
+    */
     function getPriorBalanceIndex(address account, uint timestamp) public view returns (uint) {
         uint nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
@@ -252,38 +252,38 @@ contract Gauge {
     }
 
     function _writeCheckpoint(address account, uint balance) internal {
-      uint _timestamp = block.timestamp;
-      uint _nCheckPoints = numCheckpoints[account];
+        uint _timestamp = block.timestamp;
+        uint _nCheckPoints = numCheckpoints[account];
 
-      if (_nCheckPoints > 0 && checkpoints[account][_nCheckPoints - 1].timestamp == _timestamp) {
-          checkpoints[account][_nCheckPoints - 1].balanceOf = balance;
-      } else {
-          checkpoints[account][_nCheckPoints] = Checkpoint(_timestamp, balance);
-          numCheckpoints[account] = _nCheckPoints + 1;
-      }
+        if (_nCheckPoints > 0 && checkpoints[account][_nCheckPoints - 1].timestamp == _timestamp) {
+            checkpoints[account][_nCheckPoints - 1].balanceOf = balance;
+        } else {
+            checkpoints[account][_nCheckPoints] = Checkpoint(_timestamp, balance);
+            numCheckpoints[account] = _nCheckPoints + 1;
+        }
     }
 
     function _writeRewardPerTokenCheckpoint(address token, uint reward, uint timestamp) internal {
-      uint _nCheckPoints = rewardPerTokenNumCheckpoints[token];
+        uint _nCheckPoints = rewardPerTokenNumCheckpoints[token];
 
-      if (_nCheckPoints > 0 && rewardPerTokenCheckpoints[token][_nCheckPoints - 1].timestamp == timestamp) {
-        rewardPerTokenCheckpoints[token][_nCheckPoints - 1].rewardPerToken = reward;
-      } else {
-          rewardPerTokenCheckpoints[token][_nCheckPoints] = RewardPerTokenCheckpoint(timestamp, reward);
-          rewardPerTokenNumCheckpoints[token] = _nCheckPoints + 1;
-      }
+        if (_nCheckPoints > 0 && rewardPerTokenCheckpoints[token][_nCheckPoints - 1].timestamp == timestamp) {
+            rewardPerTokenCheckpoints[token][_nCheckPoints - 1].rewardPerToken = reward;
+        } else {
+            rewardPerTokenCheckpoints[token][_nCheckPoints] = RewardPerTokenCheckpoint(timestamp, reward);
+            rewardPerTokenNumCheckpoints[token] = _nCheckPoints + 1;
+        }
     }
 
     function _writeSupplyCheckpoint() internal {
-      uint _nCheckPoints = supplyNumCheckpoints;
-      uint _timestamp = block.timestamp;
+        uint _nCheckPoints = supplyNumCheckpoints;
+        uint _timestamp = block.timestamp;
 
-      if (_nCheckPoints > 0 && supplyCheckpoints[_nCheckPoints - 1].timestamp == _timestamp) {
-        supplyCheckpoints[_nCheckPoints - 1].supply = derivedSupply;
-      } else {
-          supplyCheckpoints[_nCheckPoints] = SupplyCheckpoint(_timestamp, derivedSupply);
-          supplyNumCheckpoints = _nCheckPoints + 1;
-      }
+        if (_nCheckPoints > 0 && supplyCheckpoints[_nCheckPoints - 1].timestamp == _timestamp) {
+            supplyCheckpoints[_nCheckPoints - 1].supply = derivedSupply;
+        } else {
+            supplyCheckpoints[_nCheckPoints] = SupplyCheckpoint(_timestamp, derivedSupply);
+            supplyNumCheckpoints = _nCheckPoints + 1;
+        }
     }
 
     function rewardsListLength() external view returns (uint) {
@@ -416,11 +416,11 @@ contract Gauge {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
                 SupplyCheckpoint memory sp0 = supplyCheckpoints[i];
                 if (sp0.supply > 0) {
-                  SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
-                  (uint _reward, uint _endTime) = _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply, _startTimestamp);
-                  reward += _reward;
-                  _writeRewardPerTokenCheckpoint(token, reward, _endTime);
-                  _startTimestamp = _endTime;
+                    SupplyCheckpoint memory sp1 = supplyCheckpoints[i+1];
+                    (uint _reward, uint _endTime) = _calcRewardPerToken(token, sp1.timestamp, sp0.timestamp, sp0.supply, _startTimestamp);
+                    reward += _reward;
+                    _writeRewardPerTokenCheckpoint(token, reward, _endTime);
+                    _startTimestamp = _endTime;
                 }
             }
         }
@@ -573,21 +573,21 @@ contract Gauge {
     function _safeTransfer(address token, address to, uint256 value) internal {
         require(token.code.length > 0);
         (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
+        token.call(abi.encodeWithSelector(erc20.transfer.selector, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
         require(token.code.length > 0);
         (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
+        token.call(abi.encodeWithSelector(erc20.transferFrom.selector, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 
     function _safeApprove(address token, address spender, uint256 value) internal {
         require(token.code.length > 0);
         (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(erc20.approve.selector, spender, value));
+        token.call(abi.encodeWithSelector(erc20.approve.selector, spender, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
