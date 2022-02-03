@@ -2,6 +2,8 @@
 
 ![alt text](header.png)
 
+[![codecov](https://codecov.io/gh/andrecronje/solidly/branch/master/graph/badge.svg?token=8AZBHZII04)](https://codecov.io/gh/andrecronje/solidly)
+
 
 Solidly allows low cost, near 0 slippage trades on uncorrelated or tightly correlated assets. The protocol incentivizes fees instead of liquidity. Liquidity providers (LPs) are given incentives in the form of `token`, the amount received is calculated as follows;
 
@@ -203,3 +205,14 @@ function distribute(address token) external
 | veNFT | [0xC34A4644Bb1deea88e4045Ce3C38A0261E41FC9f](https://ftmscan.com/address/0xC34A4644Bb1deea88e4045Ce3C38A0261E41FC9f#code) |
 | veNFT-dist | [0xA4229Db9b0bAB36b212ABe09C4Be1b76E5629906](https://ftmscan.com/address/0xA4229Db9b0bAB36b212ABe09C4Be1b76E5629906#code) |
 | BaseV1Minter | [0x5778F4c3AC8A26Bf44cEc570b2b5536B148475B8](https://ftmscan.com/address/0x5778F4c3AC8A26Bf44cEc570b2b5536B148475B8#code) |
+
+## Security
+
+[Bug Bounty Program](https://github.com/andrecronje/solidly/blob/master/SECURITY.md)
+
+* [MythX: voter.sol](https://github.com/andrecronje/solidly/blob/master/audits/17faf962f99a7e7e3f26f8bc.pdf)
+* [MythX: ve.sol](https://github.com/andrecronje/solidly/blob/master/audits/4094394a6bc512d57672533c.pdf)
+* [MythX: gauges.sol](https://github.com/andrecronje/solidly/blob/master/audits/4212b799deea3d9dd8f8620e.pdf)
+* [MythX: core.sol](https://github.com/andrecronje/solidly/blob/master/audits/79effbd69276f2d16698b72d.pdf)
+* [MythX: minter.sol](https://github.com/andrecronje/solidly/blob/master/audits/dea98051d23c85bcaa80dc5a.pdf)
+* [PeckShield](https://github.com/andrecronje/solidly/blob/master/audits/e456a816-3802-4384-894c-825a4177245a.pdf)
