@@ -78,24 +78,6 @@ contract Gauge {
     address[] public rewards;
     mapping(address => bool) public isReward;
 
-    event Deposit(address indexed from, uint tokenId, uint amount);
-    event Withdraw(address indexed from, uint tokenId, uint amount);
-    event NotifyReward(address indexed from, address indexed reward, uint amount);
-    event ClaimFees(address indexed from, uint claimed0, uint claimed1);
-    event ClaimRewards(address indexed from, address indexed reward, uint amount);
-
-    function claimFees() external returns (uint claimed0, uint claimed1) {
-        (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
-        (address _token0, address _token1) = IBaseV1Core(stake).tokens();
-        _safeApprove(_token0, bribe, claimed0);
-        _safeApprove(_token1, bribe, claimed1);
-        IBribe(bribe).notifyRewardAmount(_token0, claimed0);
-        IBribe(bribe).notifyRewardAmount(_token1, claimed1);
-
-        emit ClaimFees(msg.sender, claimed0, claimed1);
-    }
-
-
     /// @notice A checkpoint for marking balance
     struct Checkpoint {
         uint timestamp;
@@ -116,21 +98,29 @@ contract Gauge {
 
     /// @notice A record of balance checkpoints for each account, by index
     mapping (address => mapping (uint => Checkpoint)) public checkpoints;
-
     /// @notice The number of checkpoints for each account
     mapping (address => uint) public numCheckpoints;
-
     /// @notice A record of balance checkpoints for each token, by index
     mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
-
     /// @notice The number of checkpoints
     uint public supplyNumCheckpoints;
-
     /// @notice A record of balance checkpoints for each token, by index
     mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
-
     /// @notice The number of checkpoints for each token
     mapping (address => uint) public rewardPerTokenNumCheckpoints;
+
+    event Deposit(address indexed from, uint tokenId, uint amount);
+    event Withdraw(address indexed from, uint tokenId, uint amount);
+    event NotifyReward(address indexed from, address indexed reward, uint amount);
+    event ClaimFees(address indexed from, uint claimed0, uint claimed1);
+    event ClaimRewards(address indexed from, address indexed reward, uint amount);
+
+    constructor(address _stake, address _bribe, address  __ve, address _voter) {
+        stake = _stake;
+        bribe = _bribe;
+        _ve = __ve;
+        voter = _voter;
+    }
 
     // simple re-entrancy check
     uint internal _unlocked = 1;
@@ -141,11 +131,15 @@ contract Gauge {
         _unlocked = 1;
     }
 
-    constructor(address _stake, address _bribe, address  __ve, address _voter) {
-        stake = _stake;
-        bribe = _bribe;
-        _ve = __ve;
-        voter = _voter;
+    function claimFees() external returns (uint claimed0, uint claimed1) {
+        (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
+        (address _token0, address _token1) = IBaseV1Core(stake).tokens();
+        _safeApprove(_token0, bribe, claimed0);
+        _safeApprove(_token1, bribe, claimed1);
+        IBribe(bribe).notifyRewardAmount(_token0, claimed0);
+        IBribe(bribe).notifyRewardAmount(_token1, claimed1);
+
+        emit ClaimFees(msg.sender, claimed0, claimed1);
     }
 
     /**

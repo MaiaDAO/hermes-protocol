@@ -11,10 +11,10 @@ contract BaseV1 {
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
 
+    address public minter;
+
     event Transfer(address indexed from, address indexed to, uint value);
     event Approval(address indexed owner, address indexed spender, uint value);
-
-    address public minter;
 
     constructor() {
         minter = msg.sender;

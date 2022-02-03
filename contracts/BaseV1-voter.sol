@@ -72,11 +72,6 @@ contract Bribe {
     address[] public rewards;
     mapping(address => bool) public isReward;
 
-    event Deposit(address indexed from, uint tokenId, uint amount);
-    event Withdraw(address indexed from, uint tokenId, uint amount);
-    event NotifyReward(address indexed from, address indexed reward, uint amount);
-    event ClaimRewards(address indexed from, address indexed reward, uint amount);
-
     uint public totalSupply;
     mapping(uint => uint) public balanceOf;
 
@@ -100,21 +95,26 @@ contract Bribe {
 
     /// @notice A record of balance checkpoints for each account, by index
     mapping (uint => mapping (uint => Checkpoint)) public checkpoints;
-
     /// @notice The number of checkpoints for each account
     mapping (uint => uint) public numCheckpoints;
-
     /// @notice A record of balance checkpoints for each token, by index
     mapping (uint => SupplyCheckpoint) public supplyCheckpoints;
-
     /// @notice The number of checkpoints
     uint public supplyNumCheckpoints;
-
     /// @notice A record of balance checkpoints for each token, by index
     mapping (address => mapping (uint => RewardPerTokenCheckpoint)) public rewardPerTokenCheckpoints;
-
     /// @notice The number of checkpoints for each token
     mapping (address => uint) public rewardPerTokenNumCheckpoints;
+
+    event Deposit(address indexed from, uint tokenId, uint amount);
+    event Withdraw(address indexed from, uint tokenId, uint amount);
+    event NotifyReward(address indexed from, address indexed reward, uint amount);
+    event ClaimRewards(address indexed from, address indexed reward, uint amount);
+
+    constructor() {
+        factory = msg.sender;
+        _ve = BaseV1Voter(msg.sender)._ve();
+    }
 
     // simple re-entrancy check
     uint internal _unlocked = 1;
@@ -123,11 +123,6 @@ contract Bribe {
         _unlocked = 2;
         _;
         _unlocked = 1;
-    }
-
-    constructor() {
-        factory = msg.sender;
-        _ve = BaseV1Voter(msg.sender)._ve();
     }
 
     /**

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.11;
 
 interface erc20 {
@@ -85,9 +84,6 @@ contract BaseV1Pair {
 
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
 
-    event Transfer(address indexed from, address indexed to, uint amount);
-    event Approval(address indexed owner, address indexed spender, uint amount);
-
     address public immutable token0;
     address public immutable token1;
     address public immutable fees;
@@ -141,6 +137,9 @@ contract BaseV1Pair {
     );
     event Sync(uint reserve0, uint reserve1);
     event Claim(address indexed sender, address indexed recipient, uint amount0, uint amount1);
+
+    event Transfer(address indexed from, address indexed to, uint amount);
+    event Approval(address indexed owner, address indexed spender, uint amount);
 
     constructor() {
         factory = msg.sender;
@@ -438,7 +437,6 @@ contract BaseV1Pair {
     function _f(uint x0, uint y) internal pure returns (uint) {
         return x0*(y*y/1e18*y/1e18)/1e18+(x0*x0/1e18*x0/1e18)*y/1e18;
     }
-
 
     function _d(uint x0, uint y) internal pure returns (uint) {
         return 3*x0*(y*y/1e18)/1e18+(x0*x0/1e18*x0/1e18);
