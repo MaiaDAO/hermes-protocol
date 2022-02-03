@@ -34,7 +34,7 @@ interface ve_dist {
 // codifies the minting rules as per ve(3,3), abstracted from the token to support any token that allows minting
 
 contract BaseV1Minter {
-    
+
     uint internal constant week = 86400 * 7; // allows minting once per week (reset every Thursday 00:00 UTC)
     uint internal constant emission = 98;
     uint internal constant tail_emission = 2;

@@ -272,11 +272,6 @@ contract Bribe {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    function batchUserRewards(address token, uint tokenId, uint maxRuns) external {
-        (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
-        (userRewards[token][tokenId], lastEarn[token][tokenId]) = _batchUserRewards(token, tokenId, maxRuns);
-    }
-
     // allows a user to claim rewards for a given token
     function getReward(uint tokenId, address[] memory tokens) external lock  {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
@@ -501,6 +496,7 @@ contract Bribe {
 }
 
 contract BaseV1Voter {
+
     address public immutable _ve; // the ve token that governs these contracts
     address public immutable factory; // the BaseV1Factory
     address internal immutable base;

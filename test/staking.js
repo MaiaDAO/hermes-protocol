@@ -159,6 +159,12 @@ describe("staking", function () {
     await gauge.deposit(pair_1000, 1);
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
     expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
+    await gauge.batchRewardPerToken(ve_underlying.address, 200);
+    expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
     await staking.withdraw(pair_1000);
     await gauge.withdraw(pair_1000);
     await stake.approve(staking.address, pair_1000);

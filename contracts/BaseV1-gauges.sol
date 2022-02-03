@@ -289,11 +289,6 @@ contract Gauge {
         return Math.min(block.timestamp, periodFinish[token]);
     }
 
-    function batchUserRewards(address token, address account, uint maxRuns) external {
-        (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
-        (userRewards[token][account], lastEarn[token][account]) = _batchUserRewards(token, account, maxRuns);
-    }
-
     function getReward(address account, address[] memory tokens) external lock {
         require(msg.sender == account || msg.sender == voter);
         for (uint i = 0; i < tokens.length; i++) {
