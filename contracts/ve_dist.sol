@@ -176,7 +176,7 @@ contract ve_dist {
         uint rounded_timestamp = block.timestamp / WEEK * WEEK;
         VotingEscrow(ve).checkpoint();
 
-        for (uint i = 0; i < 20; i ++) {
+        for (uint i = 0; i < 20; i++) {
             if (t > rounded_timestamp) {
                 break;
             } else {

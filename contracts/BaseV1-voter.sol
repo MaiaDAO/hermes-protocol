@@ -132,6 +132,7 @@ contract BaseV1Voter {
     function _reset(uint _tokenId) internal {
         _resetFor(_tokenId);
         _resetAgainst(_tokenId);
+        usedWeights[_tokenId] = 0;
     }
 
     function _resetFor(uint _tokenId) internal {
@@ -139,7 +140,7 @@ contract BaseV1Voter {
         uint _poolVoteCnt = _poolVote.length;
         uint _totalWeight = 0;
 
-        for (uint i = 0; i < _poolVoteCnt; i ++) {
+        for (uint i = 0; i < _poolVoteCnt; i++) {
             address _pool = _poolVote[i];
             uint _votes = forVotes[_tokenId][_pool];
 
@@ -153,7 +154,6 @@ contract BaseV1Voter {
             }
         }
         totalWeight -= _totalWeight;
-        usedWeights[_tokenId] = 0;
         delete forPoolVote[_tokenId];
     }
 
@@ -162,7 +162,7 @@ contract BaseV1Voter {
         uint _poolVoteCnt = _poolVote.length;
         uint _totalWeight = 0;
 
-        for (uint i = 0; i < _poolVoteCnt; i ++) {
+        for (uint i = 0; i < _poolVoteCnt; i++) {
             address _pool = _poolVote[i];
             uint _votes = againstVotes[_tokenId][_pool];
 
@@ -175,7 +175,6 @@ contract BaseV1Voter {
             }
         }
         totalWeight -= _totalWeight;
-        usedWeights[_tokenId] = 0;
         delete againstPoolVote[_tokenId];
     }
 
@@ -191,13 +190,13 @@ contract BaseV1Voter {
 
         uint x = 0;
 
-        for (uint i = 0; i < _forPoolCnt; i ++) {
+        for (uint i = 0; i < _forPoolCnt; i++) {
             _against[x] = false;
             _poolVote[x] = _forPoolVote[i];
             _weights[x++] = forVotes[_tokenId][_forPoolVote[i]];
         }
 
-        for (uint i = 0; i < _againstPoolCnt; i ++) {
+        for (uint i = 0; i < _againstPoolCnt; i++) {
             _against[x] = true;
             _poolVote[x] = _againstPoolVote[i];
             _weights[x++] = againstVotes[_tokenId][_againstPoolVote[i]];
@@ -214,11 +213,11 @@ contract BaseV1Voter {
         uint _totalWeight = 0;
         uint _usedWeight = 0;
 
-        for (uint i = 0; i < _poolCnt; i ++) {
+        for (uint i = 0; i < _poolCnt; i++) {
             _totalVoteWeight += _weights[i];
         }
 
-        for (uint i = 0; i < _poolCnt; i ++) {
+        for (uint i = 0; i < _poolCnt; i++) {
             address _pool = _poolVote[i];
             address _gauge = gauges[_pool];
             uint _poolWeight = _weights[i] * _weight / _totalVoteWeight;
@@ -358,27 +357,27 @@ contract BaseV1Voter {
     }
 
     function claimRewards(address[] memory _gauges, address[][] memory _tokens) external {
-        for (uint i = 0; i < _gauges.length; i ++) {
+        for (uint i = 0; i < _gauges.length; i++) {
             IGauge(_gauges[i]).getReward(msg.sender, _tokens[i]);
         }
     }
 
     function claimBribes(address[] memory _bribes, address[][] memory _tokens, uint _tokenId) external {
         require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
-        for (uint i = 0; i < _bribes.length; i ++) {
+        for (uint i = 0; i < _bribes.length; i++) {
             IBribe(_bribes[i]).getRewardForOwner(_tokenId, _tokens[i]);
         }
     }
 
     function claimFees(address[] memory _fees, address[][] memory _tokens, uint _tokenId) external {
         require(ve(_ve).isApprovedOrOwner(msg.sender, _tokenId));
-        for (uint i = 0; i < _fees.length; i ++) {
+        for (uint i = 0; i < _fees.length; i++) {
             IBribe(_fees[i]).getRewardForOwner(_tokenId, _tokens[i]);
         }
     }
 
     function distributeFees(address[] memory _gauges) external {
-        for (uint i = 0; i < _gauges.length; i ++) {
+        for (uint i = 0; i < _gauges.length; i++) {
             IGauge(_gauges[i]).claimFees();
         }
     }
