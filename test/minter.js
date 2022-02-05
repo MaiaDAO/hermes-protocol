@@ -44,8 +44,12 @@ describe("minter", function () {
     await router.deployed();
     const BaseV1GaugeFactory = await ethers.getContractFactory("BaseV1GaugeFactory");
     gauges_factory = await BaseV1GaugeFactory.deploy();
+    await gauges_factory.deployed();
+    const BaseV1BribeFactory = await ethers.getContractFactory("BaseV1BribeFactory");
+    const bribe_factory = await BaseV1BribeFactory.deploy();
+    await bribe_factory.deployed();
     const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter");
-    const gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address);
+    const gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address, bribe_factory.address);
     await gauge_factory.deployed();
     await ve_underlying.approve(ve.address, ethers.BigNumber.from("1000000000000000000"));
     await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);

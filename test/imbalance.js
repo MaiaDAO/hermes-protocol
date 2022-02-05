@@ -160,8 +160,14 @@ describe("imbalance", function () {
   it("deploy BaseV1Voter", async function () {
     const BaseV1GaugeFactory = await ethers.getContractFactory("BaseV1GaugeFactory");
     gauges_factory = await BaseV1GaugeFactory.deploy();
+    await gauges_factory.deployed();
+
+    const BaseV1BribeFactory = await ethers.getContractFactory("BaseV1BribeFactory");
+    const bribe_factory = await BaseV1BribeFactory.deploy();
+    await bribe_factory.deployed();
+
     const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter");
-    gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address);
+    gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address, bribe_factory.address);
     await gauge_factory.deployed();
 
     expect(await gauge_factory.length()).to.equal(0);
