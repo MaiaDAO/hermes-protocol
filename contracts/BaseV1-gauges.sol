@@ -134,10 +134,14 @@ contract Gauge {
     function claimFees() external returns (uint claimed0, uint claimed1) {
         (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
         (address _token0, address _token1) = IBaseV1Core(stake).tokens();
-        _safeApprove(_token0, bribe, claimed0);
-        _safeApprove(_token1, bribe, claimed1);
-        IBribe(bribe).notifyRewardAmount(_token0, claimed0);
-        IBribe(bribe).notifyRewardAmount(_token1, claimed1);
+        if (claimed0 > 0) {
+            _safeApprove(_token0, bribe, claimed0);
+            IBribe(bribe).notifyRewardAmount(_token0, claimed0);
+        }
+        if (claimed1 > 0) {
+            _safeApprove(_token1, bribe, claimed1);
+            IBribe(bribe).notifyRewardAmount(_token1, claimed1);
+        }
 
         emit ClaimFees(msg.sender, claimed0, claimed1);
     }
