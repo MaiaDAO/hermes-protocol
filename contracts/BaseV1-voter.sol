@@ -312,28 +312,6 @@ contract Bribe {
         return rewardPerTokenStored[token] + ((lastTimeRewardApplicable(token) - Math.min(lastUpdateTime[token], periodFinish[token])) * rewardRate[token] * PRECISION / totalSupply);
     }
 
-    function _batchUserRewards(address token, uint tokenId, uint maxRuns) internal view returns (uint, uint) {
-        uint _startTimestamp = lastEarn[token][tokenId];
-        if (numCheckpoints[tokenId] == 0) {
-            return (userRewards[token][tokenId], _startTimestamp);
-        }
-
-        uint _startIndex = getPriorBalanceIndex(tokenId, _startTimestamp);
-        uint _endIndex = Math.min(numCheckpoints[tokenId]-1, maxRuns);
-
-        uint reward = userRewards[token][tokenId];
-        for (uint i = _startIndex; i < _endIndex; i++) {
-            Checkpoint memory cp0 = checkpoints[tokenId][i];
-            Checkpoint memory cp1 = checkpoints[tokenId][i+1];
-            (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
-            (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
-            reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
-            _startTimestamp = cp1.timestamp;
-        }
-
-        return (reward, _startTimestamp);
-    }
-
     function batchRewardPerToken(address token, uint maxRuns) external {
         (rewardPerTokenStored[token], lastUpdateTime[token])  = _batchRewardPerToken(token, maxRuns);
     }
@@ -681,14 +659,14 @@ contract BaseV1Voter {
         }
     }
 
-    function updateFor(uint start, uint end) public {
+    function updateForRange(uint start, uint end) public {
         for (uint i = start; i < end; i++) {
             _updateFor(gauges[pools[i]]);
         }
     }
 
     function updateAll() external {
-        updateFor(0, pools.length);
+        updateForRange(0, pools.length);
     }
 
     function updateGauge(address _gauge) external {

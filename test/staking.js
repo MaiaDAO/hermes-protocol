@@ -365,8 +365,7 @@ describe("staking", function () {
     await network.provider.send("evm_mine")
     await gauge.batchRewardPerToken(ve_underlying.address, 200);
     expect(await staking.rewardPerTokenStored()).to.equal(await gauge.rewardPerTokenStored(ve_underlying.address))
-    console.log(await gauge.derivedSupply());
-    console.log(await staking.totalSupply());
+    expect(await gauge.derivedSupply()).to.equal(await staking.totalSupply());
   });
 
   it("notify reward2 and compare set 2", async function () {

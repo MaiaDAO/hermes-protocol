@@ -258,6 +258,8 @@ describe("washtrade", function () {
     console.log(await bribe3.earned(mim.address, 1));
     console.log(await mim.balanceOf(owner.address));
     console.log(await mim.balanceOf(bribe3.address));
+    await bribe3.batchRewardPerToken(mim.address, 200);
+    await bribe3.batchRewardPerToken(dai.address, 200);
     await bribe3.getReward(1, [mim.address, dai.address]);
     await network.provider.send("evm_increaseTime", [691200])
     await network.provider.send("evm_mine")
