@@ -479,6 +479,9 @@ contract BaseV1Voter {
     address public immutable factory; // the BaseV1Factory
     address internal immutable base;
     address public immutable gaugefactory;
+    address public minter;
+
+    uint public constant LISTING_FEE = 500000e18;
 
     uint public totalWeight; // total voting weight
 
@@ -512,6 +515,7 @@ contract BaseV1Voter {
         factory = _factory;
         base = ve(__ve).token();
         gaugefactory = _gauges;
+        minter = msg.sender;
     }
 
     // simple re-entrancy check
@@ -521,6 +525,14 @@ contract BaseV1Voter {
         _unlocked = 2;
         _;
         _unlocked = 1;
+    }
+
+    function initialize(address[] memory _pools, address _minter) external {
+        require(msg.sender == minter);
+        for (uint i = 0; i < _pools.length; i++) {
+            _createGauge(_pools[i]);
+        }
+        minter = _minter;
     }
 
     function reset(uint _tokenId) external {
@@ -584,9 +596,10 @@ contract BaseV1Voter {
         address[] memory _againstPoolVote = againstPoolVote[_tokenId];
         uint _forPoolCnt = _forPoolVote.length;
         uint _againstPoolCnt = _againstPoolVote.length;
-        uint[] memory _weights = new uint[](_forPoolCnt+_againstPoolCnt);
-        bool[] memory _against = new bool[](_forPoolCnt+_againstPoolCnt);
-        address[] memory _poolVote = new address[](_forPoolCnt+_againstPoolCnt);
+        uint _totalCnt = _forPoolCnt + _againstPoolCnt;
+        uint[] memory _weights = new uint[](_totalCnt);
+        bool[] memory _against = new bool[](_totalCnt);
+        address[] memory _poolVote = new address[](_totalCnt);
 
         uint x = 0;
 
@@ -660,6 +673,11 @@ contract BaseV1Voter {
     }
 
     function createGauge(address _pool) external returns (address) {
+        _safeTransferFrom(base, msg.sender, minter, LISTING_FEE);
+        return _createGauge(_pool);
+    }
+
+    function _createGauge(address _pool) internal returns (address) {
         require(gauges[_pool] == address(0x0), "exists");
         require(IBaseV1Factory(factory).isPair(_pool), "!_pool");
         address _bribe = address(new Bribe());

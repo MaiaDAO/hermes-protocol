@@ -363,6 +363,7 @@ describe("core", function () {
   it("deploy BaseV1Factory gauge", async function () {
     const pair_1000 = ethers.BigNumber.from("1000000000");
 
+    await ve_underlying.approve(gauge_factory.address, ethers.BigNumber.from("1500000000000000000000000"));
     await gauge_factory.createGauge(pair.address);
     await gauge_factory.createGauge(pair2.address);
     await gauge_factory.createGauge(pair3.address);

@@ -68,7 +68,7 @@ describe("minter", function () {
 
     const pair = await router.pairFor(mim.address, ve_underlying.address, false);
 
-
+    await ve_underlying.approve(gauge_factory.address, ethers.BigNumber.from("500000000000000000000000"));
     await gauge_factory.createGauge(pair);
     expect(await ve.balanceOfNFT(1)).to.above(ethers.BigNumber.from("995063075414519385"));
     expect(await ve_underlying.balanceOf(ve.address)).to.be.equal(ethers.BigNumber.from("1000000000000000000"));
