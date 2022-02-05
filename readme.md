@@ -208,7 +208,8 @@ function distribute(address token) external
 
 ## Security
 
-[Bug Bounty Program](https://github.com/andrecronje/solidly/blob/master/SECURITY.md)
+- [Immunefi Bug Bounty Program](https://immunefi.com/bounty/solidly/)  
+- [Bug Bounty Program](https://github.com/andrecronje/solidly/blob/master/SECURITY.md)  
 
 * [MythX: voter.sol](https://github.com/andrecronje/solidly/blob/master/audits/17faf962f99a7e7e3f26f8bc.pdf)
 * [MythX: ve.sol](https://github.com/andrecronje/solidly/blob/master/audits/4094394a6bc512d57672533c.pdf)

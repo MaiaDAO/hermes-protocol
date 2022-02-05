@@ -32,4 +32,7 @@ Actual payouts are determined by classifying the vulnerability based on its impa
 
 ### Scope
 
-The scope of the Bug Bounty program spans this repo.
+The scope of the Bug Bounty program;
+
+- ./contracts
+- excluding ./contracts/test/*
