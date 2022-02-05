@@ -486,15 +486,20 @@ contract BaseV1Voter {
     mapping(address => address) public gauges; // pool => gauge
     mapping(address => address) public poolForGauge; // gauge => pool
     mapping(address => address) public bribes; // gauge => bribe
-    mapping(address => uint) public weights; // pool => weight
-    mapping(uint => mapping(address => uint)) public votes; // nft => pool => votes
-    mapping(uint => address[]) public poolVote; // nft => pools
+    mapping(address => uint) public forWeights; // pool => weight
+    mapping(address => uint) public againstWeights; // pool => weight
+    mapping(uint => mapping(address => uint)) public forVotes; // nft => pool => votes
+    mapping(uint => mapping(address => uint)) public againstVotes; // nft => pool => votes
+    mapping(uint => address[]) public forPoolVote; // nft => pools
+    mapping(uint => address[]) public againstPoolVote; // nft => pools
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
     mapping(address => bool) public isGauge;
 
     event GaugeCreated(address indexed gauge, address creator, address indexed bribe, address indexed pool);
-    event Voted(address indexed voter, uint tokenId, uint weight);
-    event Abstained(uint tokenId, uint weight);
+    event VotedFor(address indexed voter, uint tokenId, uint weight);
+    event VotedAgainst(address indexed voter, uint tokenId, uint weight);
+    event AbstainedAgainst(uint tokenId, uint weight);
+    event AbstainedFor(uint tokenId, uint weight);
     event Deposit(address indexed lp, address indexed gauge, uint tokenId, uint amount);
     event Withdraw(address indexed lp, address indexed gauge, uint tokenId, uint amount);
     event NotifyReward(address indexed sender, address indexed reward, uint amount);
@@ -525,41 +530,82 @@ contract BaseV1Voter {
     }
 
     function _reset(uint _tokenId) internal {
-        address[] storage _poolVote = poolVote[_tokenId];
+        _resetFor(_tokenId);
+        _resetAgainst(_tokenId);
+    }
+
+    function _resetFor(uint _tokenId) internal {
+        address[] storage _poolVote = forPoolVote[_tokenId];
         uint _poolVoteCnt = _poolVote.length;
         uint _totalWeight = 0;
 
         for (uint i = 0; i < _poolVoteCnt; i ++) {
             address _pool = _poolVote[i];
-            uint _votes = votes[_tokenId][_pool];
+            uint _votes = forVotes[_tokenId][_pool];
 
             if (_votes > 0) {
                 _updateFor(gauges[_pool]);
                 _totalWeight += _votes;
-                weights[_pool] -= _votes;
-                votes[_tokenId][_pool] -= _votes;
+                forWeights[_pool] -= _votes;
+                forVotes[_tokenId][_pool] -= _votes;
                 Bribe(bribes[gauges[_pool]])._withdraw(_votes, _tokenId);
-                emit Abstained(_tokenId, _votes);
+                emit AbstainedFor(_tokenId, _votes);
             }
         }
         totalWeight -= _totalWeight;
         usedWeights[_tokenId] = 0;
-        delete poolVote[_tokenId];
+        delete forPoolVote[_tokenId];
+    }
+
+    function _resetAgainst(uint _tokenId) internal {
+        address[] storage _poolVote = againstPoolVote[_tokenId];
+        uint _poolVoteCnt = _poolVote.length;
+        uint _totalWeight = 0;
+
+        for (uint i = 0; i < _poolVoteCnt; i ++) {
+            address _pool = _poolVote[i];
+            uint _votes = againstVotes[_tokenId][_pool];
+
+            if (_votes > 0) {
+                _updateFor(gauges[_pool]);
+                _totalWeight += _votes;
+                againstWeights[_pool] -= _votes;
+                againstVotes[_tokenId][_pool] -= _votes;
+                emit AbstainedAgainst(_tokenId, _votes);
+            }
+        }
+        totalWeight -= _totalWeight;
+        usedWeights[_tokenId] = 0;
+        delete againstPoolVote[_tokenId];
     }
 
     function poke(uint _tokenId) external {
-        address[] memory _poolVote = poolVote[_tokenId];
-        uint _poolCnt = _poolVote.length;
-        uint[] memory _weights = new uint[](_poolCnt);
+        address[] memory _forPoolVote = forPoolVote[_tokenId];
+        address[] memory _againstPoolVote = againstPoolVote[_tokenId];
+        uint _forPoolCnt = _forPoolVote.length;
+        uint _againstPoolCnt = _againstPoolVote.length;
+        uint[] memory _weights = new uint[](_forPoolCnt+_againstPoolCnt);
+        bool[] memory _against = new bool[](_forPoolCnt+_againstPoolCnt);
+        address[] memory _poolVote = new address[](_forPoolCnt+_againstPoolCnt);
 
-        for (uint i = 0; i < _poolCnt; i ++) {
-            _weights[i] = votes[_tokenId][_poolVote[i]];
+        uint x = 0;
+
+        for (uint i = 0; i < _forPoolCnt; i ++) {
+            _against[x] = false;
+            _poolVote[x] = _forPoolVote[i];
+            _weights[x++] = forVotes[_tokenId][_forPoolVote[i]];
         }
 
-        _vote(_tokenId, _poolVote, _weights);
+        for (uint i = 0; i < _againstPoolCnt; i ++) {
+            _against[x] = true;
+            _poolVote[x] = _againstPoolVote[i];
+            _weights[x++] = againstVotes[_tokenId][_againstPoolVote[i]];
+        }
+
+        _vote(_tokenId, _poolVote, _weights, _against);
     }
 
-    function _vote(uint _tokenId, address[] memory _poolVote, uint[] memory _weights) internal {
+    function _vote(uint _tokenId, address[] memory _poolVote, uint[] memory _weights, bool[] memory _against) internal {
         _reset(_tokenId);
         uint _poolCnt = _poolVote.length;
         uint _weight = ve(_ve).balanceOfNFT(_tokenId);
@@ -580,11 +626,20 @@ contract BaseV1Voter {
                 _updateFor(_gauge);
                 _usedWeight += _poolWeight;
                 _totalWeight += _poolWeight;
-                weights[_pool] += _poolWeight;
-                poolVote[_tokenId].push(_pool);
-                votes[_tokenId][_pool] += _poolWeight;
-                Bribe(bribes[_gauge])._deposit(_poolWeight, _tokenId);
-                emit Voted(msg.sender, _tokenId, _poolWeight);
+                if (!_against[i]) {
+                    forWeights[_pool] += _poolWeight;
+                    forPoolVote[_tokenId].push(_pool);
+
+                    forVotes[_tokenId][_pool] += _poolWeight;
+                    Bribe(bribes[_gauge])._deposit(_poolWeight, _tokenId);
+                    emit VotedFor(msg.sender, _tokenId, _poolWeight);
+                } else {
+                    againstWeights[_pool] += _poolWeight;
+                    againstPoolVote[_tokenId].push(_pool);
+
+                    againstVotes[_tokenId][_pool] += _poolWeight;
+                    emit VotedAgainst(msg.sender, _tokenId, _poolWeight);
+                }
             }
         }
         if (_usedWeight > 0) ve(_ve).voting(_tokenId);
@@ -595,7 +650,13 @@ contract BaseV1Voter {
     function vote(uint tokenId, address[] calldata _poolVote, uint[] calldata _weights) external {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
         require(_poolVote.length == _weights.length);
-        _vote(tokenId, _poolVote, _weights);
+        _vote(tokenId, _poolVote, _weights, new bool[](_weights.length));
+    }
+
+    function voteMixed(uint tokenId, address[] calldata _poolVote, uint[] calldata _weights, bool[] calldata _against) external {
+        require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
+        require(_poolVote.length == _weights.length);
+        _vote(tokenId, _poolVote, _weights, _against);
     }
 
     function createGauge(address _pool) external returns (address) {
@@ -675,7 +736,7 @@ contract BaseV1Voter {
 
     function _updateFor(address _gauge) internal {
         address _pool = poolForGauge[_gauge];
-        uint _supplied = weights[_pool];
+        uint _supplied = forWeights[_pool] - Math.min(forWeights[_pool], againstWeights[_pool]);
         if (_supplied > 0) {
             uint _supplyIndex = supplyIndex[_gauge];
             uint _index = index; // get global index0 for accumulated distro

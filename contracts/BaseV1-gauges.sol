@@ -338,28 +338,6 @@ contract Gauge {
         return Math.min((_derived + _adjusted), _balance);
     }
 
-    function _batchUserRewards(address token, address account, uint maxRuns) internal view returns (uint, uint) {
-        uint _startTimestamp = lastEarn[token][account];
-        if (numCheckpoints[account] == 0) {
-            return (userRewards[token][account], _startTimestamp);
-        }
-
-        uint _startIndex = getPriorBalanceIndex(account, _startTimestamp);
-        uint _endIndex = Math.min(numCheckpoints[account]-1, maxRuns);
-
-        uint reward = userRewards[token][account];
-        for (uint i = _startIndex; i < _endIndex; i++) {
-            Checkpoint memory cp0 = checkpoints[account][i];
-            Checkpoint memory cp1 = checkpoints[account][i+1];
-            (uint _rewardPerTokenStored0,) = getPriorRewardPerToken(token, cp0.timestamp);
-            (uint _rewardPerTokenStored1,) = getPriorRewardPerToken(token, cp1.timestamp);
-            reward += cp0.balanceOf * (_rewardPerTokenStored1 - _rewardPerTokenStored0) / PRECISION;
-            _startTimestamp = cp1.timestamp;
-        }
-
-        return (reward, _startTimestamp);
-    }
-
     function batchRewardPerToken(address token, uint maxRuns) external {
         (rewardPerTokenStored[token], lastUpdateTime[token])  = _batchRewardPerToken(token, maxRuns);
     }
