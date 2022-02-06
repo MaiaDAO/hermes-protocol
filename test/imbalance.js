@@ -170,6 +170,8 @@ describe("imbalance", function () {
     gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address, bribe_factory.address);
     await gauge_factory.deployed();
 
+    await gauge_factory.initialize([ust.address, mim.address, dai.address, ve_underlying.address],owner.address);
+
     expect(await gauge_factory.length()).to.equal(0);
   });
 

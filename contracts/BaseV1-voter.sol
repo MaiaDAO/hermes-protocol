@@ -80,6 +80,7 @@ contract BaseV1Voter {
     mapping(uint => address[]) public againstPoolVote; // nft => pools
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
     mapping(address => bool) public isGauge;
+    mapping(address => bool) public isWhitelisted;
 
     event GaugeCreated(address indexed gauge, address creator, address indexed bribe, address indexed pool);
     event VotedFor(address indexed voter, uint tokenId, uint weight);
@@ -111,10 +112,10 @@ contract BaseV1Voter {
         _unlocked = 1;
     }
 
-    function initialize(address[] memory _pools, address _minter) external {
+    function initialize(address[] memory _tokens, address _minter) external {
         require(msg.sender == minter);
-        for (uint i = 0; i < _pools.length; i++) {
-            _createGauge(_pools[i]);
+        for (uint i = 0; i < _tokens.length; i++) {
+            _whitelist(_tokens[i]);
         }
         minter = _minter;
     }
@@ -259,14 +260,27 @@ contract BaseV1Voter {
         _vote(tokenId, _poolVote, _weights, _against);
     }
 
-    function createGauge(address _pool) external returns (address) {
-        _safeTransferFrom(base, msg.sender, minter, listing_fee());
-        return _createGauge(_pool);
+    function whitelist(address _token, uint _tokenId) public {
+        if (_tokenId > 0) {
+            require(msg.sender == ve(_ve).ownerOf(_tokenId));
+            require(ve(_ve).balanceOfNFT(_tokenId) > listing_fee());
+        } else {
+            _safeTransferFrom(base, msg.sender, minter, listing_fee());
+        }
+
+        _whitelist(_token);
     }
 
-    function _createGauge(address _pool) internal returns (address) {
+    function _whitelist(address _token) internal {
+        require(!isWhitelisted[_token]);
+        isWhitelisted[_token] = true;
+    }
+
+    function createGauge(address _pool) external returns (address) {
         require(gauges[_pool] == address(0x0), "exists");
         require(IBaseV1Factory(factory).isPair(_pool), "!_pool");
+        (address tokenA, address tokenB) = IBaseV1Core(_pool).tokens();
+        require(isWhitelisted[tokenA] && isWhitelisted[tokenB], "!whitelisted");
         address _bribe = IBaseV1BribeFactory(bribefactory).createBribe();
         address _gauge = IBaseV1GaugeFactory(gaugefactory).createGauge(_pool, _bribe, _ve);
         erc20(base).approve(_gauge, type(uint).max);
