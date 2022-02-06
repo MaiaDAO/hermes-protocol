@@ -72,21 +72,16 @@ contract BaseV1Voter {
     mapping(address => address) public gauges; // pool => gauge
     mapping(address => address) public poolForGauge; // gauge => pool
     mapping(address => address) public bribes; // gauge => bribe
-    mapping(address => uint) public forWeights; // pool => weight
-    mapping(address => uint) public againstWeights; // pool => weight
-    mapping(uint => mapping(address => uint)) public forVotes; // nft => pool => votes
-    mapping(uint => mapping(address => uint)) public againstVotes; // nft => pool => votes
-    mapping(uint => address[]) public forPoolVote; // nft => pools
-    mapping(uint => address[]) public againstPoolVote; // nft => pools
+    mapping(address => int256) public weights; // pool => weight
+    mapping(uint => mapping(address => int256)) public votes; // nft => pool => votes
+    mapping(uint => address[]) public poolVote; // nft => pools
     mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
     mapping(address => bool) public isGauge;
     mapping(address => bool) public isWhitelisted;
 
     event GaugeCreated(address indexed gauge, address creator, address indexed bribe, address indexed pool);
-    event VotedFor(address indexed voter, uint tokenId, uint weight);
-    event VotedAgainst(address indexed voter, uint tokenId, uint weight);
-    event AbstainedAgainst(uint tokenId, uint weight);
-    event AbstainedFor(uint tokenId, uint weight);
+    event Voted(address indexed voter, uint tokenId, int256 weight);
+    event Abstained(uint tokenId, int256 weight);
     event Deposit(address indexed lp, address indexed gauge, uint tokenId, uint amount);
     event Withdraw(address indexed lp, address indexed gauge, uint tokenId, uint amount);
     event NotifyReward(address indexed sender, address indexed reward, uint amount);
@@ -131,133 +126,87 @@ contract BaseV1Voter {
     }
 
     function _reset(uint _tokenId) internal {
-        _resetFor(_tokenId);
-        _resetAgainst(_tokenId);
+        address[] storage _poolVote = poolVote[_tokenId];
+        uint _poolVoteCnt = _poolVote.length;
+        int256 _totalWeight = 0;
+
+        for (uint i = 0; i < _poolVoteCnt; i ++) {
+            address _pool = _poolVote[i];
+            int256 _votes = votes[_tokenId][_pool];
+
+            if (_votes != 0) {
+                _updateFor(gauges[_pool]);
+                weights[_pool] -= _votes;
+                votes[_tokenId][_pool] -= _votes;
+                if (_votes > 0) {
+                    IBribe(bribes[gauges[_pool]])._withdraw(uint256(_votes), _tokenId);
+                    _totalWeight += _votes;
+                } else {
+                    _totalWeight -= _votes;
+                }
+                emit Abstained(_tokenId, _votes);
+            }
+        }
+        totalWeight -= uint256(_totalWeight);
         usedWeights[_tokenId] = 0;
-    }
-
-    function _resetFor(uint _tokenId) internal {
-        address[] storage _poolVote = forPoolVote[_tokenId];
-        uint _poolVoteCnt = _poolVote.length;
-        uint _totalWeight = 0;
-
-        for (uint i = 0; i < _poolVoteCnt; i++) {
-            address _pool = _poolVote[i];
-            uint _votes = forVotes[_tokenId][_pool];
-
-            if (_votes > 0) {
-                _updateFor(gauges[_pool]);
-                _totalWeight += _votes;
-                forWeights[_pool] -= _votes;
-                forVotes[_tokenId][_pool] -= _votes;
-                IBribe(bribes[gauges[_pool]])._withdraw(_votes, _tokenId);
-                emit AbstainedFor(_tokenId, _votes);
-            }
-        }
-        totalWeight -= _totalWeight;
-        delete forPoolVote[_tokenId];
-    }
-
-    function _resetAgainst(uint _tokenId) internal {
-        address[] storage _poolVote = againstPoolVote[_tokenId];
-        uint _poolVoteCnt = _poolVote.length;
-        uint _totalWeight = 0;
-
-        for (uint i = 0; i < _poolVoteCnt; i++) {
-            address _pool = _poolVote[i];
-            uint _votes = againstVotes[_tokenId][_pool];
-
-            if (_votes > 0) {
-                _updateFor(gauges[_pool]);
-                _totalWeight += _votes;
-                againstWeights[_pool] -= _votes;
-                againstVotes[_tokenId][_pool] -= _votes;
-                emit AbstainedAgainst(_tokenId, _votes);
-            }
-        }
-        totalWeight -= _totalWeight;
-        delete againstPoolVote[_tokenId];
+        delete poolVote[_tokenId];
     }
 
     function poke(uint _tokenId) external {
-        address[] memory _forPoolVote = forPoolVote[_tokenId];
-        address[] memory _againstPoolVote = againstPoolVote[_tokenId];
-        uint _forPoolCnt = _forPoolVote.length;
-        uint _againstPoolCnt = _againstPoolVote.length;
-        uint _totalCnt = _forPoolCnt + _againstPoolCnt;
-        uint[] memory _weights = new uint[](_totalCnt);
-        bool[] memory _against = new bool[](_totalCnt);
-        address[] memory _poolVote = new address[](_totalCnt);
+        address[] memory _poolVote = poolVote[_tokenId];
+        uint _poolCnt = _poolVote.length;
+        int256[] memory _weights = new int256[](_poolCnt);
 
-        uint x = 0;
-
-        for (uint i = 0; i < _forPoolCnt; i++) {
-            _against[x] = false;
-            _poolVote[x] = _forPoolVote[i];
-            _weights[x++] = forVotes[_tokenId][_forPoolVote[i]];
+        for (uint i = 0; i < _poolCnt; i ++) {
+            _weights[i] = votes[_tokenId][_poolVote[i]];
         }
 
-        for (uint i = 0; i < _againstPoolCnt; i++) {
-            _against[x] = true;
-            _poolVote[x] = _againstPoolVote[i];
-            _weights[x++] = againstVotes[_tokenId][_againstPoolVote[i]];
-        }
-
-        _vote(_tokenId, _poolVote, _weights, _against);
+        _vote(_tokenId, _poolVote, _weights);
     }
 
-    function _vote(uint _tokenId, address[] memory _poolVote, uint[] memory _weights, bool[] memory _against) internal {
+    function _vote(uint _tokenId, address[] memory _poolVote, int256[] memory _weights) internal {
         _reset(_tokenId);
         uint _poolCnt = _poolVote.length;
-        uint _weight = ve(_ve).balanceOfNFT(_tokenId);
-        uint _totalVoteWeight = 0;
-        uint _totalWeight = 0;
-        uint _usedWeight = 0;
+        int256 _weight = int256(ve(_ve).balanceOfNFT(_tokenId));
+        int256 _totalVoteWeight = 0;
+        int256 _totalWeight = 0;
+        int256 _usedWeight = 0;
 
         for (uint i = 0; i < _poolCnt; i++) {
-            _totalVoteWeight += _weights[i];
+            _totalVoteWeight += _weights[i] > 0 ? _weights[i] : -_weights[i];
         }
 
         for (uint i = 0; i < _poolCnt; i++) {
             address _pool = _poolVote[i];
             address _gauge = gauges[_pool];
-            uint _poolWeight = _weights[i] * _weight / _totalVoteWeight;
 
             if (isGauge[_gauge]) {
+                int256 _poolWeight = _weights[i] * _weight / _totalVoteWeight;
                 _updateFor(_gauge);
+
+                poolVote[_tokenId].push(_pool);
+
+                weights[_pool] += _poolWeight;
+                votes[_tokenId][_pool] += _poolWeight;
+                if (_poolWeight > 0) {
+                    IBribe(bribes[_gauge])._deposit(uint256(_poolWeight), _tokenId);
+                } else {
+                    _poolWeight = -_poolWeight;
+                }
                 _usedWeight += _poolWeight;
                 _totalWeight += _poolWeight;
-                if (!_against[i]) {
-                    forWeights[_pool] += _poolWeight;
-                    forPoolVote[_tokenId].push(_pool);
-
-                    forVotes[_tokenId][_pool] += _poolWeight;
-                    IBribe(bribes[_gauge])._deposit(_poolWeight, _tokenId);
-                    emit VotedFor(msg.sender, _tokenId, _poolWeight);
-                } else {
-                    againstWeights[_pool] += _poolWeight;
-                    againstPoolVote[_tokenId].push(_pool);
-
-                    againstVotes[_tokenId][_pool] += _poolWeight;
-                    emit VotedAgainst(msg.sender, _tokenId, _poolWeight);
-                }
+                emit Voted(msg.sender, _tokenId, _poolWeight);
             }
         }
         if (_usedWeight > 0) ve(_ve).voting(_tokenId);
-        totalWeight += _totalWeight;
-        usedWeights[_tokenId] = _usedWeight;
+        totalWeight += uint256(_totalWeight);
+        usedWeights[_tokenId] = uint256(_usedWeight);
     }
 
-    function vote(uint tokenId, address[] calldata _poolVote, uint[] calldata _weights) external {
+    function vote(uint tokenId, address[] calldata _poolVote, int256[] calldata _weights) external {
         require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
         require(_poolVote.length == _weights.length);
-        _vote(tokenId, _poolVote, _weights, new bool[](_weights.length));
-    }
-
-    function voteMixed(uint tokenId, address[] calldata _poolVote, uint[] calldata _weights, bool[] calldata _against) external {
-        require(ve(_ve).isApprovedOrOwner(msg.sender, tokenId));
-        require(_poolVote.length == _weights.length);
-        _vote(tokenId, _poolVote, _weights, _against);
+        _vote(tokenId, _poolVote, _weights);
     }
 
     function whitelist(address _token, uint _tokenId) public {
@@ -355,14 +304,14 @@ contract BaseV1Voter {
 
     function _updateFor(address _gauge) internal {
         address _pool = poolForGauge[_gauge];
-        uint _supplied = forWeights[_pool] - Math.min(forWeights[_pool], againstWeights[_pool]);
+        int256 _supplied = weights[_pool];
         if (_supplied > 0) {
             uint _supplyIndex = supplyIndex[_gauge];
             uint _index = index; // get global index0 for accumulated distro
             supplyIndex[_gauge] = _index; // update _gauge current position to global position
             uint _delta = _index - _supplyIndex; // see if there is any difference that need to be accrued
             if (_delta > 0) {
-                uint _share = _supplied * _delta / 1e18; // add accrued difference for each supplied token
+                uint _share = uint(_supplied) * _delta / 1e18; // add accrued difference for each supplied token
                 claimable[_gauge] += _share;
             }
         } else {
