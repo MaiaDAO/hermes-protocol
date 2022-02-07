@@ -188,8 +188,8 @@ function distribute(address token) external
 | BaseV1BribeFactory | [0x409Ae97fBFb9Aff407766B40a9c170DC9cc1aC76](https://testnet.ftmscan.com/address/0x409Ae97fBFb9Aff407766B40a9c170DC9cc1aC76#code) |
 | BaseV1GaugesFactory | [0x572346756f961c379888235dd950CFB6a4496b17](https://testnet.ftmscan.com/address/0x572346756f961c379888235dd950CFB6a4496b17#code) |
 | BaseV1Router01 | [0x04583f12bF185f11d1B3783894Acaa29dCE6547A](https://testnet.ftmscan.com/address/0x04583f12bF185f11d1B3783894Acaa29dCE6547A#code) |
-| BaseV1Voter | [0x3c137d25FAC210C211Eb523da31542B8A115f7F8](https://testnet.ftmscan.com/address/0x571f572D6046A9CEF7B7f629D79cF8cFf6E164E5#code) |
-| veNFT | [0xDa38D8c66e7b3190f98570b7965A8825BDdfee6D](https://testnet.ftmscan.com/address/0x3c137d25FAC210C211Eb523da31542B8A115f7F8#code) |
+| BaseV1Voter | [0x3c137d25FAC210C211Eb523da31542B8A115f7F8](https://testnet.ftmscan.com/address/0x3c137d25FAC210C211Eb523da31542B8A115f7F8#code) |
+| veNFT | [0xDa38D8c66e7b3190f98570b7965A8825BDdfee6D](https://testnet.ftmscan.com/address/0xDa38D8c66e7b3190f98570b7965A8825BDdfee6D#code) |
 | veNFT-dist | [0x2D8c86F8D47511D92E40B370A43c45b1d2C9805B](https://testnet.ftmscan.com/address/0x2D8c86F8D47511D92E40B370A43c45b1d2C9805B#code) |
 | BaseV1Minter | [0x190305e3D36648613572c5dCD366bcD496e9c75D](https://testnet.ftmscan.com/address/0x190305e3D36648613572c5dCD366bcD496e9c75D#code) |
 
