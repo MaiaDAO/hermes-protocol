@@ -31,5 +31,9 @@ module.exports = {
     hardhat: {
       initialBaseFeePerGas: 0,
     },
+    ftmtest: {
+      url: "https://rpc.testnet.fantom.network/",
+      accounts: [""]
+    }
   },
 };
