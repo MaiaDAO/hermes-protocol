@@ -42,7 +42,8 @@ interface VotingEscrow {
     function user_point_history(uint tokenId, uint loc) external view returns (Point memory);
     function point_history(uint loc) external view returns (Point memory);
     function checkpoint() external;
-    function deposit_for(uint tokenId, uint value)  external;
+    function deposit_for(uint tokenId, uint value) external;
+    function token() external view returns (address);
 }
 
 contract ve_dist {
@@ -77,14 +78,15 @@ contract ve_dist {
 
     address public depositor;
 
-    constructor(address _voting_escrow, address _token, address _depositor) {
+    constructor(address _voting_escrow) {
         uint _t = block.timestamp / WEEK * WEEK;
         start_time = _t;
         last_token_time = _t;
         time_cursor = _t;
+        address _token = VotingEscrow(_voting_escrow).token();
         token = _token;
         voting_escrow = _voting_escrow;
-        depositor = _depositor;
+        depositor = msg.sender;
         erc20(_token).approve(_voting_escrow, type(uint).max);
     }
 
