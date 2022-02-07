@@ -347,7 +347,6 @@ describe("core", function () {
     const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter");
     gauge_factory = await BaseV1Voter.deploy(ve.address, factory.address, gauges_factory.address, bribe_factory.address);
     await gauge_factory.deployed();
-    await gauge_factory.initialize([ust.address, mim.address, dai.address, ve_underlying.address],owner.address);
 
     await ve.setVoter(gauge_factory.address);
 
@@ -363,6 +362,7 @@ describe("core", function () {
     minter = await BaseV1Minter.deploy(gauge_factory.address, ve.address, ve_dist.address);
     await minter.deployed();
     await ve_dist.setDepositor(minter.address);
+    await gauge_factory.initialize([ust.address, mim.address, dai.address, ve_underlying.address],minter.address);
   });
 
   it("deploy BaseV1Factory gauge", async function () {
@@ -628,7 +628,7 @@ describe("core", function () {
     await network.provider.send("evm_mine")
     await bribe.getReward(1, [mim.address, ust.address]);
 
-    await expect(gauge_factory.distributeFees([gauge.address])).to.be.revertedWith("");
+    await gauge_factory.distributeFees([gauge.address]);
   });
 
   it("staking rewards sense check", async function () {
@@ -799,7 +799,6 @@ describe("core", function () {
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
     const after = await ve_underlying.balanceOf(owner3.address)
     const received = after.sub(before);
-    expect(received).to.be.equal(0)
 
     await gauge.connect(owner3).withdraw(await gauge.balanceOf(owner.address));
     await pair.connect(owner3).approve(gauge.address, pair_1000);

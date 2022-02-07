@@ -37,6 +37,7 @@ interface IBaseV1Core {
 
 interface IBribe {
     function notifyRewardAmount(address token, uint amount) external;
+    function left(address token) external view returns (uint);
 }
 
 interface Voter {
@@ -44,6 +45,7 @@ interface Voter {
     function detachTokenFromGauge(uint _tokenId, address account) external;
     function emitDeposit(uint _tokenId, address account, uint amount) external;
     function emitWithdraw(uint _tokenId, address account, uint amount) external;
+    function distribute(address _gauge) external;
 }
 
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
@@ -109,6 +111,9 @@ contract Gauge {
     /// @notice The number of checkpoints for each token
     mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
+    uint internal fees0;
+    uint internal fees1;
+
     event Deposit(address indexed from, uint tokenId, uint amount);
     event Withdraw(address indexed from, uint tokenId, uint amount);
     event NotifyReward(address indexed from, address indexed reward, uint amount);
@@ -131,19 +136,33 @@ contract Gauge {
         _unlocked = 1;
     }
 
-    function claimFees() external returns (uint claimed0, uint claimed1) {
-        (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
-        (address _token0, address _token1) = IBaseV1Core(stake).tokens();
-        if (claimed0 > 0) {
-            _safeApprove(_token0, bribe, claimed0);
-            IBribe(bribe).notifyRewardAmount(_token0, claimed0);
-        }
-        if (claimed1 > 0) {
-            _safeApprove(_token1, bribe, claimed1);
-            IBribe(bribe).notifyRewardAmount(_token1, claimed1);
-        }
+    function claimFees() external lock returns (uint claimed0, uint claimed1) {
+        return _claimFees();
+    }
 
-        emit ClaimFees(msg.sender, claimed0, claimed1);
+    function _claimFees() internal returns (uint claimed0, uint claimed1) {
+        (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
+        uint _fees0 = fees0 + claimed0;
+        uint _fees1 = fees1 + claimed1;
+        if (_fees0 > 0 || _fees1 > 0) {
+            (address _token0, address _token1) = IBaseV1Core(stake).tokens();
+            if (_fees0 > IBribe(bribe).left(_token0) && _fees0 / DURATION > 0) {
+                fees0 = 0;
+                _safeApprove(_token0, bribe, _fees0);
+                IBribe(bribe).notifyRewardAmount(_token0, _fees0);
+            } else {
+                fees0 = _fees0;
+            }
+            if (_fees1 > IBribe(bribe).left(_token1) && _fees1 / DURATION > 0) {
+                fees1 = 0;
+                _safeApprove(_token1, bribe, _fees1);
+                IBribe(bribe).notifyRewardAmount(_token1, _fees1);
+            } else {
+                fees1 = _fees1;
+            }
+
+            emit ClaimFees(msg.sender, claimed0, claimed1);
+        }
     }
 
     /**
@@ -295,6 +314,10 @@ contract Gauge {
 
     function getReward(address account, address[] memory tokens) external lock {
         require(msg.sender == account || msg.sender == voter);
+        _unlocked = 1;
+        Voter(voter).distribute(address(this));
+        _unlocked = 2;
+
         for (uint i = 0; i < tokens.length; i++) {
             (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
 
@@ -518,6 +541,7 @@ contract Gauge {
     function notifyRewardAmount(address token, uint amount) external lock {
         require(token != stake);
         (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
+        _claimFees();
 
         if (block.timestamp >= periodFinish[token]) {
             _safeTransferFrom(token, msg.sender, address(this), amount);

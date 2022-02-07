@@ -18,4 +18,8 @@ contract voter_test {
       function emitWithdraw(uint tokenId, address account, uint amount) external {
 
       }
+
+      function distribute(address _gauge) external {
+          
+      }
 }

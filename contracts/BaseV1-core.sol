@@ -196,12 +196,14 @@ contract BaseV1Pair {
         claimed0 = claimable0[recipient];
         claimed1 = claimable1[recipient];
 
-        claimable0[recipient] = 0;
-        claimable1[recipient] = 0;
+        if (claimed0 > 0 || claimed1 > 0) {
+            claimable0[recipient] = 0;
+            claimable1[recipient] = 0;
 
-        BaseV1Fees(fees).claimFeesFor(recipient, claimed0, claimed1);
+            BaseV1Fees(fees).claimFeesFor(recipient, claimed0, claimed1);
 
-        emit Claim(msg.sender, recipient, claimed0, claimed1);
+            emit Claim(msg.sender, recipient, claimed0, claimed1);
+        }
     }
 
     // Accrue fees on token0

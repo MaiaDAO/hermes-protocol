@@ -408,6 +408,12 @@ contract Bribe {
         emit Withdraw(msg.sender, tokenId, amount);
     }
 
+    function left(address token) external view returns (uint) {
+        if (block.timestamp >= periodFinish[token]) return 0;
+        uint _remaining = periodFinish[token] - block.timestamp;
+        return _remaining * rewardRate[token];
+    }
+
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     function notifyRewardAmount(address token, uint amount) external lock {
         (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);

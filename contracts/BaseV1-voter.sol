@@ -57,6 +57,10 @@ interface IBribe {
     function getRewardForOwner(uint tokenId, address[] memory tokens) external;
 }
 
+interface IMinter {
+    function update_period() external returns (uint);
+}
+
 contract BaseV1Voter {
 
     address public immutable _ve; // the ve token that governs these contracts
@@ -275,7 +279,7 @@ contract BaseV1Voter {
     mapping(address => uint) internal supplyIndex;
     mapping(address => uint) public claimable;
 
-    function notifyRewardAmount(uint amount) external lock {
+    function notifyRewardAmount(uint amount) external {
         _safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
         uint256 _ratio = amount * 1e18 / totalWeight; // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
@@ -348,6 +352,7 @@ contract BaseV1Voter {
     }
 
     function distribute(address _gauge) public lock {
+        IMinter(minter).update_period();
         _updateFor(_gauge);
         uint _claimable = claimable[_gauge];
         uint _left = IGauge(_gauge).left(base);
