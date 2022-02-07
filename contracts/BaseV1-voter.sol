@@ -88,6 +88,7 @@ contract BaseV1Voter {
     event DistributeReward(address indexed sender, address indexed gauge, uint amount);
     event Attach(address indexed owner, address indexed gauge, uint tokenId);
     event Detach(address indexed owner, address indexed gauge, uint tokenId);
+    event Whitelisted(address indexed whitelister, address indexed token);
 
     constructor(address __ve, address _factory, address  _gauges, address _bribes) {
         _ve = __ve;
@@ -223,6 +224,7 @@ contract BaseV1Voter {
     function _whitelist(address _token) internal {
         require(!isWhitelisted[_token]);
         isWhitelisted[_token] = true;
+        emit Whitelisted(msg.sender, _token);
     }
 
     function createGauge(address _pool) external returns (address) {

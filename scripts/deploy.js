@@ -4,8 +4,8 @@ async function main() {
   const Bribes = await ethers.getContractFactory("BaseV1BribeFactory");
   const Core = await ethers.getContractFactory("BaseV1Factory");
   const Factory = await ethers.getContractFactory("BaseV1Router01");
-  const Ve = await ethers.getContractFactory("ve");
-  const Ve_dist = await ethers.getContractFactory("ve_dist");
+  const Ve = await ethers.getContractFactory("contracts/ve.sol:ve");
+  const Ve_dist = await ethers.getContractFactory("contracts/ve_dist.sol:ve_dist");
   const BaseV1Voter = await ethers.getContractFactory("BaseV1Voter");
   const BaseV1Minter = await ethers.getContractFactory("BaseV1Minter");
 
