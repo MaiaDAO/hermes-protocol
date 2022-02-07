@@ -356,7 +356,7 @@ describe("core", function () {
 
   it("deploy BaseV1Minter", async function () {
     const VeDist = await ethers.getContractFactory("contracts/ve_dist.sol:ve_dist");
-    ve_dist = await VeDist.deploy(ve.address, ve_underlying.address, owner.address);
+    ve_dist = await VeDist.deploy(ve.address);
     await ve_dist.deployed();
 
     const BaseV1Minter = await ethers.getContractFactory("BaseV1Minter");

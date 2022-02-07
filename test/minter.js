@@ -56,7 +56,7 @@ describe("minter", function () {
     await ve_underlying.approve(ve.address, ethers.BigNumber.from("1000000000000000000"));
     await ve.create_lock(ethers.BigNumber.from("1000000000000000000"), 4 * 365 * 86400);
     const VeDist = await ethers.getContractFactory("contracts/ve_dist.sol:ve_dist");
-    ve_dist = await VeDist.deploy(ve.address, ve_underlying.address, owner.address);
+    ve_dist = await VeDist.deploy(ve.address);
     await ve_dist.deployed();
     await ve.setVoter(gauge_factory.address);
 
