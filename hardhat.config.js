@@ -23,7 +23,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 9999,
+        runs: 200,
       },
     },
   },
@@ -33,7 +33,6 @@ module.exports = {
     },
     ftmtest: {
       url: "https://rpc.testnet.fantom.network/",
-      accounts: [""]
     }
   },
 };
