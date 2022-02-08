@@ -401,6 +401,10 @@ contract Gauge {
             return (reward, _startTimestamp);
         }
 
+        if (rewardRate[token] == 0) {
+            return (reward, block.timestamp);
+        }
+
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = supplyNumCheckpoints-1;
 
