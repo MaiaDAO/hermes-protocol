@@ -43,7 +43,6 @@ contract Bribe {
 
     mapping(address => mapping(uint => uint)) public lastEarn;
     mapping(address => mapping(uint => uint)) public userRewardPerTokenStored;
-    mapping(address => mapping(uint => uint)) public userRewards;
 
     address[] public rewards;
     mapping(address => bool) public isReward;
@@ -255,7 +254,6 @@ contract Bribe {
             (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
 
             uint _reward = earned(tokens[i], tokenId);
-            userRewards[tokens[i]][tokenId] = 0;
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerTokenStored[tokens[i]];
             if (_reward > 0) _safeTransfer(tokens[i], msg.sender, _reward);
@@ -272,7 +270,6 @@ contract Bribe {
             (rewardPerTokenStored[tokens[i]], lastUpdateTime[tokens[i]]) = _updateRewardPerToken(tokens[i]);
 
             uint _reward = earned(tokens[i], tokenId);
-            userRewards[tokens[i]][tokenId] = 0;
             lastEarn[tokens[i]][tokenId] = block.timestamp;
             userRewardPerTokenStored[tokens[i]][tokenId] = rewardPerTokenStored[tokens[i]];
             if (_reward > 0) _safeTransfer(tokens[i], _owner, _reward);
@@ -360,13 +357,13 @@ contract Bribe {
     function earned(address token, uint tokenId) public view returns (uint) {
         uint _startTimestamp = lastEarn[token][tokenId];
         if (numCheckpoints[tokenId] == 0) {
-            return userRewards[token][tokenId];
+            return 0;
         }
 
         uint _startIndex = getPriorBalanceIndex(tokenId, _startTimestamp);
         uint _endIndex = numCheckpoints[tokenId]-1;
 
-        uint reward = userRewards[token][tokenId];
+        uint reward = 0;
 
         if (_endIndex - _startIndex > 1) {
             for (uint i = _startIndex; i < _endIndex-1; i++) {
