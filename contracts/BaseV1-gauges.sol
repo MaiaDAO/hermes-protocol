@@ -434,7 +434,7 @@ contract Gauge {
 
     // earned is an estimation, it won't be exact till the supply > rewardPerToken calculations have run
     function earned(address token, address account) public view returns (uint) {
-        uint _startTimestamp = lastEarn[token][account];
+        uint _startTimestamp = Math.max(lastEarn[token][account], rewardPerTokenCheckpoints[token][0].timestamp);
         if (numCheckpoints[account] == 0) {
             return 0;
         }

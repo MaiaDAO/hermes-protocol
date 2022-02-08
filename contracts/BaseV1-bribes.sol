@@ -359,7 +359,7 @@ contract Bribe {
     }
 
     function earned(address token, uint tokenId) public view returns (uint) {
-        uint _startTimestamp = lastEarn[token][tokenId];
+        uint _startTimestamp = Math.max(lastEarn[token][tokenId], rewardPerTokenCheckpoints[token][0].timestamp);
         if (numCheckpoints[tokenId] == 0) {
             return 0;
         }
