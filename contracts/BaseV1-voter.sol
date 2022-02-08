@@ -68,6 +68,7 @@ contract BaseV1Voter {
     address internal immutable base;
     address public immutable gaugefactory;
     address public immutable bribefactory;
+    uint internal constant DURATION = 7 days; // rewards are released over 7 days
     address public minter;
 
     uint public totalWeight; // total voting weight
@@ -356,7 +357,7 @@ contract BaseV1Voter {
         _updateFor(_gauge);
         uint _claimable = claimable[_gauge];
         uint _left = IGauge(_gauge).left(base);
-        if (_claimable > _left) {
+        if (_claimable > _left && _claimable / DURATION > 0) {
             claimable[_gauge] = 0;
             IGauge(_gauge).notifyRewardAmount(base, _claimable);
             emit DistributeReward(msg.sender, _gauge, _claimable);
