@@ -356,8 +356,7 @@ contract BaseV1Voter {
         IMinter(minter).update_period();
         _updateFor(_gauge);
         uint _claimable = claimable[_gauge];
-        uint _left = IGauge(_gauge).left(base);
-        if (_claimable > _left && _claimable / DURATION > 0) {
+        if (_claimable > IGauge(_gauge).left(base) && _claimable / DURATION > 0) {
             claimable[_gauge] = 0;
             IGauge(_gauge).notifyRewardAmount(base, _claimable);
             emit DistributeReward(msg.sender, _gauge, _claimable);
