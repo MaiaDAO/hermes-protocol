@@ -111,8 +111,8 @@ contract Gauge {
     /// @notice The number of checkpoints for each token
     mapping (address => uint) public rewardPerTokenNumCheckpoints;
 
-    uint internal fees0;
-    uint internal fees1;
+    uint public fees0;
+    uint public fees1;
 
     event Deposit(address indexed from, uint tokenId, uint amount);
     event Withdraw(address indexed from, uint tokenId, uint amount);
@@ -142,9 +142,9 @@ contract Gauge {
 
     function _claimFees() internal returns (uint claimed0, uint claimed1) {
         (claimed0, claimed1) = IBaseV1Core(stake).claimFees();
-        uint _fees0 = fees0 + claimed0;
-        uint _fees1 = fees1 + claimed1;
-        if (_fees0 > 0 || _fees1 > 0) {
+        if (claimed0 > 0 || claimed1 > 0) {
+            uint _fees0 = fees0 + claimed0;
+            uint _fees1 = fees1 + claimed1;
             (address _token0, address _token1) = IBaseV1Core(stake).tokens();
             if (_fees0 > IBribe(bribe).left(_token0) && _fees0 / DURATION > 0) {
                 fees0 = 0;

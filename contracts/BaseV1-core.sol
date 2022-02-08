@@ -187,22 +187,18 @@ contract BaseV1Pair {
 
     // claim accumulated but unclaimed fees (viewable via claimable0 and claimable1)
     function claimFees() external returns (uint claimed0, uint claimed1) {
-        return claimFeesFor(msg.sender);
-    }
+        _updateFor(msg.sender);
 
-    function claimFeesFor(address recipient) public lock returns (uint claimed0, uint claimed1) {
-        _updateFor(recipient);
-
-        claimed0 = claimable0[recipient];
-        claimed1 = claimable1[recipient];
+        claimed0 = claimable0[msg.sender];
+        claimed1 = claimable1[msg.sender];
 
         if (claimed0 > 0 || claimed1 > 0) {
-            claimable0[recipient] = 0;
-            claimable1[recipient] = 0;
+            claimable0[msg.sender] = 0;
+            claimable1[msg.sender] = 0;
 
-            BaseV1Fees(fees).claimFeesFor(recipient, claimed0, claimed1);
+            BaseV1Fees(fees).claimFeesFor(msg.sender, claimed0, claimed1);
 
-            emit Claim(msg.sender, recipient, claimed0, claimed1);
+            emit Claim(msg.sender, msg.sender, claimed0, claimed1);
         }
     }
 
