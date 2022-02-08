@@ -421,6 +421,8 @@ contract Bribe {
 
     // used to notify a gauge/bribe of a given reward, this can create griefing attacks by extending rewards
     function notifyRewardAmount(address token, uint amount) external lock {
+        require(amount > 0);
+        if (rewardRate[token] == 0) _writeRewardPerTokenCheckpoint(token, 0, block.timestamp);
         (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
 
         if (block.timestamp >= periodFinish[token]) {

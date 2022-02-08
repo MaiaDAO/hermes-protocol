@@ -406,7 +406,6 @@ contract Gauge {
         }
 
         if (rewardRate[token] == 0) {
-            _writeRewardPerTokenCheckpoint(token, reward, block.timestamp);
             return (reward, block.timestamp);
         }
 
@@ -547,6 +546,8 @@ contract Gauge {
 
     function notifyRewardAmount(address token, uint amount) external lock {
         require(token != stake);
+        require(amount > 0);
+        if (rewardRate[token] == 0) _writeRewardPerTokenCheckpoint(token, 0, block.timestamp);
         (rewardPerTokenStored[token], lastUpdateTime[token]) = _updateRewardPerToken(token);
         _claimFees();
 
