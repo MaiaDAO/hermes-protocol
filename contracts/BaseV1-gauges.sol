@@ -371,6 +371,10 @@ contract Gauge {
             return (reward, _startTimestamp);
         }
 
+        if (rewardRate[token] == 0) {
+            return (reward, block.timestamp);
+        }
+
         uint _startIndex = getPriorSupplyIndex(_startTimestamp);
         uint _endIndex = Math.min(supplyNumCheckpoints-1, maxRuns);
 
@@ -402,6 +406,7 @@ contract Gauge {
         }
 
         if (rewardRate[token] == 0) {
+            _writeRewardPerTokenCheckpoint(token, reward, block.timestamp);
             return (reward, block.timestamp);
         }
 
