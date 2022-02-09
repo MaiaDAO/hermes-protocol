@@ -24,6 +24,7 @@ describe("core", function () {
   let mim;
   let dai;
   let ve_underlying;
+  let late_reward;
   let ve;
   let factory;
   let router;
@@ -64,6 +65,8 @@ describe("core", function () {
     await ve_underlying.mint(owner.address, ethers.BigNumber.from("20000000000000000000000000"));
     await ve_underlying.mint(owner2.address, ethers.BigNumber.from("10000000000000000000000000"));
     await ve_underlying.mint(owner3.address, ethers.BigNumber.from("10000000000000000000000000"));
+    late_reward = await token.deploy('LR', 'LR', 18, owner.address);
+    await late_reward.mint(owner.address, ethers.BigNumber.from("20000000000000000000000000"));
     vecontract = await ethers.getContractFactory("contracts/ve.sol:ve");
     ve = await vecontract.deploy(ve_underlying.address);
 
@@ -839,6 +842,37 @@ describe("core", function () {
     await pair.connect(owner3).approve(gauge.address, pair_1000);
     await gauge.connect(owner3).deposit(pair_1000, 0);
     await gauge.connect(owner3).getReward(owner3.address, [ve_underlying.address]);
+  });
+
+  it("gauge claim rewards", async function () {
+    const pair_1000 = ethers.BigNumber.from("1000000000");
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, 0);
+    await late_reward.approve(gauge.address, late_reward.balanceOf(owner.address));
+    await gauge.notifyRewardAmount(late_reward.address, late_reward.balanceOf(owner.address));
+
+    await network.provider.send("evm_increaseTime", [604800])
+    await network.provider.send("evm_mine")
+    const reward1 = (await gauge.earned(late_reward.address, owner.address));
+    const reward3 = (await gauge.earned(late_reward.address, owner3.address));
+    console.log(reward1.add(reward3));
+    await gauge.getReward(owner.address, [late_reward.address]);
+    await gauge.connect(owner2).getReward(owner2.address, [late_reward.address]);
+    await gauge.connect(owner3).getReward(owner3.address, [late_reward.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
+  });
+
+  it("gauge claim rewards", async function () {
+    const pair_1000 = ethers.BigNumber.from("1000000000");
+    await pair.approve(gauge.address, pair_1000);
+    await gauge.deposit(pair_1000, 0);
+    await ve_underlying.approve(gauge.address, ve_underlying.balanceOf(owner.address));
+    await gauge.notifyRewardAmount(ve_underlying.address, ve_underlying.balanceOf(owner.address));
+
+    await network.provider.send("evm_increaseTime", [604800])
+    await network.provider.send("evm_mine")
+    await gauge.getReward(owner.address, [ve_underlying.address]);
+    await gauge.withdraw(await gauge.balanceOf(owner.address));
   });
 
 });
