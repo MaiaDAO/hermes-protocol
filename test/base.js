@@ -855,7 +855,7 @@ describe("core", function () {
     await network.provider.send("evm_mine")
     const reward1 = (await gauge.earned(late_reward.address, owner.address));
     const reward3 = (await gauge.earned(late_reward.address, owner3.address));
-    console.log(reward1.add(reward3));
+    expect(reward1.add(reward3)).to.closeTo(ethers.BigNumber.from("20000000000000000000000000"), 100000);
     await gauge.getReward(owner.address, [late_reward.address]);
     await gauge.connect(owner2).getReward(owner2.address, [late_reward.address]);
     await gauge.connect(owner3).getReward(owner3.address, [late_reward.address]);
