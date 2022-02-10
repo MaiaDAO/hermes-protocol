@@ -497,7 +497,7 @@ describe("core", function () {
   });
 
   it("vote hacking", async function () {
-    await gauge_factory.vote(1, [pair.address, pair.address, pair.address, pair.address], [5000,5000,5000,5000]);
+    await gauge_factory.vote(1, [pair.address], [5000]);
     expect(await gauge_factory.usedWeights(1)).to.closeTo((await ve.balanceOfNFT(1)), 1000);
     expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
     await gauge_factory.reset(1);
@@ -533,7 +533,7 @@ describe("core", function () {
   });
 
   it("vote hacking break mint", async function () {
-    await gauge_factory.vote(1, [pair.address, pair.address, pair.address, pair.address], [5000,5000,5000,5000]);
+    await gauge_factory.vote(1, [pair.address], [5000]);
 
     expect(await gauge_factory.usedWeights(1)).to.closeTo((await ve.balanceOfNFT(1)), 1000);
     expect(await bribe.balanceOf(1)).to.equal(await gauge_factory.votes(1, pair.address));
